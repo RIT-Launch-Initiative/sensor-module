@@ -1,0 +1,23 @@
+!SESSION 2022-12-03 14:58:28.484 -----------------------------------------------
+eclipse.buildId=Version 1.10.1
+java.version=11.0.14.1
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=linux, ARCH=x86_64, WS=gtk, NL=en_US
+Command-line arguments:  -os linux -ws gtk -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2022-12-03 14:59:11.034
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2022-12-03 14:59:11.134
+!MESSAGE Log4j initialized with config file /home/aaron/Documents/Launch/sensor-module/.metadata/.log4j.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2022-12-03 14:59:16.333
+!MESSAGE Started RMI Server, listening on port 41337
+
+!ENTRY org.eclipse.cdt.core 1 0 2022-12-03 15:02:09.775
+!MESSAGE Indexed 'sensor-module' (19 sources, 81 headers) in 5.94 sec: 4,508 declarations; 21,631 references; 0 unresolved inclusions; 1 syntax errors; 2 unresolved names (0.0077%)
+
+!ENTRY org.eclipse.core.resources 2 2 2022-12-03 15:06:38.909
+!MESSAGE Save operation warnings.
+!SUBENTRY 1 org.eclipse.core.resources 2 234 2022-12-03 15:06:38.909
+!MESSAGE The project description file (.project) for 'sensor-module' was missing.  This file contains important information about the project.  A new project description file has been created, but some information about the project may have been lost.
