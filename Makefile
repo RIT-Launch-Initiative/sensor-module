@@ -11,7 +11,7 @@
 ######################################
 # target
 ######################################
-TARGET = launch-core-test
+TARGET = sensor-module
 ######################################
 # building variables
 ######################################
@@ -54,11 +54,11 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c
 # C++ sources
 CPP_SOURCES = \
 Core/Src/main.cpp \
-launch-core/sched/sched.cpp \
-launch-core/device/Device.cpp \
-launch-core/device/platforms/stm32/HAL_UART_Handlers.cpp \
-launch-core/device/platforms/stm32/HAL_I2C_Handlers.cpp \
-launch-core/device/platforms/stm32/HAL_SPI_Handlers.cpp \
+extern/launch-core/sched/sched.cpp \
+extern/launch-core/device/Device.cpp \
+extern/launch-core/device/platforms/stm32/HAL_UART_Handlers.cpp \
+extern/launch-core/device/platforms/stm32/HAL_I2C_Handlers.cpp \
+extern/launch-core/device/platforms/stm32/HAL_SPI_Handlers.cpp \
 # ASM sources
 ASM_SOURCES =  \
 startup_stm32f446xx.s
