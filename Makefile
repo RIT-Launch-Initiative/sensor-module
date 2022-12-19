@@ -59,6 +59,8 @@ extern/launch-core/device/Device.cpp \
 extern/launch-core/device/platforms/stm32/HAL_UART_Handlers.cpp \
 extern/launch-core/device/platforms/stm32/HAL_I2C_Handlers.cpp \
 extern/launch-core/device/platforms/stm32/HAL_SPI_Handlers.cpp \
+extern/launch-core/device/platforms/stm32/HAL_GPIO_Handlers.cpp \
+
 # ASM sources
 ASM_SOURCES =  \
 startup_stm32f446xx.s
