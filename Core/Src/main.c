@@ -76,59 +76,50 @@ int main(void) {
     /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
     HAL_Init();
 
-    /* USER CODE BEGIN Init */
-    /* USER CODE END Init */
 
-    /* Configure the system clock */
     SystemClock_Config();
 
-    /* USER CODE BEGIN SysInit */
 
     UART_HandleTypeDef huart;
 
     huart.Instance = USART2;
-    huart.Init.BaudRate = 115200;
+    huart.Init.BaudRate = 9600;
     huart.Init.WordLength = UART_WORDLENGTH_8B;
     huart.Init.StopBits = UART_STOPBITS_1;
     huart.Init.Parity = UART_PARITY_NONE;
     huart.Init.Mode = UART_MODE_TX_RX;
+    huart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+//    HAL_UART_Init(&huart);
     HALUARTDevice uart("uart", &huart);
     uart.init();
-
-
-
-//    GPIO_InitTypeDef GPIO_InitStruct;
-//    GPIO_InitStruct.Pin = 0x05;
+//
+//    GPIO_InitTypeDef GPIO_InitStruct = {0};
+//    GPIO_InitStruct.Pin = GPIO_PIN_5;
 //    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 //    GPIO_InitStruct.Pull = GPIO_NOPULL;
 //    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 //    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
     /* USER CODE BEGIN 2 */
-//    GPIO_TypeDef *gpioTypeDef = GPIOA;
-//    HALGPIODevice gpioDevice = HALGPIODevice("LED GPIO", gpioTypeDef, 0x05);
-//    LED led = LED(gpioDevice);
-//
-//
+    GPIO_TypeDef *gpioTypeDef = GPIOA;
+    HALGPIODevice gpioDevice = HALGPIODevice("LED GPIO", gpioTypeDef, 0x05);
+    LED led = LED(gpioDevice);
+    led.init();
 //    HALGPIODevice gpioDevice2 = HALGPIODevice("Test GPIO", gpioTypeDef, 0x23);
-    uint8_t data[10] = "Launch";
 
-    /* USER CODE END 2 */
+    uint8_t msg[10] = "Launch";
 
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
     while (1) {
-        uart.write(data, sizeof(data));
-//        led.toggle();
-        /* USER CODE END WHILE */
-        /* USER CODE BEGIN 3 */
+//        HAL_UART_Transmit(&huart, msg, 6, 100);
+        uart.write(msg, sizeof(msg));
+        led.toggle();
+
+//        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
         HAL_Delay(100);
 
     }
-    /* USER CODE END 3 */
 }
 
 /**
