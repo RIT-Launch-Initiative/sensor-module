@@ -98,16 +98,8 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-//        led.toggle();
-
-        led.setState(LED_ON);
-        led.setState(LED_ON);
-
-        HAL_Delay(100);
-        led.setState(LED_OFF);
-        led.setState(LED_OFF);
-
-        HAL_Delay(100);
+        led.toggle();
+        HAL_Delay(500);
     }
     /* USER CODE END 3 */
 }
