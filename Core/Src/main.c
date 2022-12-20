@@ -21,9 +21,16 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "device/platforms/stm32/GPIODevice.h"
-#include "device/platforms/stm32/UARTDevice.h"
+#include <stdio.h>
+
+#include "device/platforms/stm32/HAL_GPIODevice.h"
+#include "device/platforms/stm32/HAL_UARTDevice.h"
+#include "device/platforms/stm32/HAL_SPIDevice.h"
+
 #include "device/peripherals/LED/LED.h"
+#include "device/peripherals/w25q/w25q.h"
+
+//#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,11 +103,27 @@ int main(void) {
     MX_SPI1_Init();
     MX_UART4_Init();
     /* USER CODE BEGIN 2 */
-    HALGPIODevice gpioDevice = HALGPIODevice("LED GPIO", GPIOA, GPIO_PIN_5);
+    HALUARTDevice uart("UART", &huart4);
+    RetType uartRet = uart.init();
+
+    HALGPIODevice gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
     RetType gpioRet = gpioDevice.init();
     LED led = LED(gpioDevice);
     RetType ledRet = led.init();
 
+    HALSPIDevice spiDevice("W25Q SPI", &hspi1);
+    RetType spiRet = spiDevice.init();
+
+    HALGPIODevice csPin = HALGPIODevice("W25Q CS", GPIOB, GPIO_PIN_12);
+    RetType csRet = csPin.init();
+
+    HALGPIODevice clkPin = HALGPIODevice("W25Q CLK", GPIOB, GPIO_PIN_13);
+
+    W25Q w25q(spiDevice, csPin, clkPin);
+    w25q.init();
+    w25q.toggleWrite(WRITE_SET_ENABLE);
+
+    uint8_t data[256] = {};
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -109,6 +132,8 @@ int main(void) {
         /* USER CODE END WHILE */
         led.toggle();
         HAL_Delay(500);
+        uart.write((uint8_t *) "Hello World!\r", 15);
+        w25q.readData();
 
         /* USER CODE BEGIN 3 */
     }
