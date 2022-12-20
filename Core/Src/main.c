@@ -18,13 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f4xx.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_uart.h"
 
 #include "device/platforms/stm32/GPIODevice.h"
 #include "device/platforms/stm32/UARTDevice.h"
-
 #include "device/peripherals/LED/LED.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -53,6 +49,8 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+
+static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -76,50 +74,33 @@ int main(void) {
     /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
     HAL_Init();
 
+    /* USER CODE BEGIN Init */
 
+    /* USER CODE END Init */
+
+    /* Configure the system clock */
     SystemClock_Config();
 
+    /* USER CODE BEGIN SysInit */
 
-    UART_HandleTypeDef huart;
-
-    huart.Instance = USART2;
-    huart.Init.BaudRate = 9600;
-    huart.Init.WordLength = UART_WORDLENGTH_8B;
-    huart.Init.StopBits = UART_STOPBITS_1;
-    huart.Init.Parity = UART_PARITY_NONE;
-    huart.Init.Mode = UART_MODE_TX_RX;
-    huart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-//    HAL_UART_Init(&huart);
-    HALUARTDevice uart("uart", &huart);
-    uart.init();
-//
-//    GPIO_InitTypeDef GPIO_InitStruct = {0};
-//    GPIO_InitStruct.Pin = GPIO_PIN_5;
-//    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-//    GPIO_InitStruct.Pull = GPIO_NOPULL;
-//    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-//    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
+    /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
+    MX_GPIO_Init();
     /* USER CODE BEGIN 2 */
-    GPIO_TypeDef *gpioTypeDef = GPIOA;
-    HALGPIODevice gpioDevice = HALGPIODevice("LED GPIO", gpioTypeDef, 0x05);
+    HALGPIODevice gpioDevice = HALGPIODevice("LED GPIO", GPIOA, GPIO_PIN_5);
+    RetType gpioRet = gpioDevice.init();
     LED led = LED(gpioDevice);
-    led.init();
-//    HALGPIODevice gpioDevice2 = HALGPIODevice("Test GPIO", gpioTypeDef, 0x23);
+    RetType ledRet = led.init();
 
-    uint8_t msg[10] = "Launch";
+    /* USER CODE END 2 */
 
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
     while (1) {
-//        HAL_UART_Transmit(&huart, msg, 6, 100);
-        uart.write(msg, sizeof(msg));
         led.toggle();
-
-//        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-        HAL_Delay(100);
-
     }
+    /* USER CODE END 3 */
 }
 
 /**
@@ -158,6 +139,29 @@ void SystemClock_Config(void) {
     if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
         Error_Handler();
     }
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void) {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+
+    /*Configure GPIO pin : PA5 */
+    GPIO_InitStruct.Pin = GPIO_PIN_5;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
