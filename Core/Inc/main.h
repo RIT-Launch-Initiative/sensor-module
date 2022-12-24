@@ -53,7 +53,8 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void BMP_HAL_Delay(uint32_t ms);
+void bmp_delay(uint32_t period, void *intf_ptr);
+
 
 /* USER CODE END EFP */
 

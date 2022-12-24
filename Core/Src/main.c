@@ -130,7 +130,8 @@ int main(void) {
     LED led = LED(gpioDevice);
     RetType ledRet = led.init();
 
-    HALSPIDevice spiDevice("W25Q SPI", &hspi1);
+    HALSPIDevice
+    spiDevice("W25Q SPI", &hspi1);
     RetType spiRet = spiDevice.init();
 
     HALGPIODevice csPin = HALGPIODevice("W25Q CS", GPIOB, GPIO_PIN_12);
@@ -142,7 +143,8 @@ int main(void) {
     w25q.init();
     w25q.toggleWrite(WRITE_SET_ENABLE);
 
-    HALI2CDevice bmpI2C("BMP390 I2C", &hi2c1);
+    HALI2CDevice
+    bmpI2C("BMP390 I2C", &hi2c1);
     bmp3_calib_data bmp3CalibData;
 //    uint8_t try = 1;
     uint8_t index = 0;
@@ -155,13 +157,15 @@ int main(void) {
 //    struct bmp3_settings settings = { 0 };
 //    struct bmp3_fifo_data fifo = { 0 };
 //    struct bmp3_status status = { { 0 } };
-    BMP390 bmp390(0x00, nullptr, BMP3_I2C_INTF, bmp3CalibData, nullptr, nullptr, &bmpI2C);
+    uint8_t devAddr = BMP3_ADDR_I2C_PRIM;
+    BMP390 bmp390(&devAddr, BMP3_I2C_INTF, bmp3CalibData, &bmp_delay, nullptr, &bmpI2C);
     RetType bmpRet = bmp390.init();
 
     if (bmpRet != RET_SUCCESS) {
         while (1) {
             led.toggle();
-            HAL_Delay(100);}
+            HAL_Delay(100);
+        }
     }
 
     uint8_t data[256] = {};
@@ -404,7 +408,8 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-void BMP_HAL_Delay(uint32_t period, void *intf_ptr) {
+void bmp_delay(uint32_t period, void *intf_ptr) {
+    (void) intf_ptr;
     HAL_Delay(period);
 }
 
