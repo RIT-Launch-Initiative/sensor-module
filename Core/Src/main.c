@@ -59,6 +59,7 @@ I2C_HandleTypeDef hi2c3;
 SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -78,6 +79,8 @@ static void MX_I2C1_Init(void);
 static void MX_I2C2_Init(void);
 
 static void MX_I2C3_Init(void);
+
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -119,10 +122,16 @@ int main(void) {
     MX_I2C1_Init();
     MX_I2C2_Init();
     MX_I2C3_Init();
+    MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
     HALUARTDevice
-    uart("UART", &huart4);
+    uart("UART", &huart2);
+    uint8_t uartBuffer[100] = "Launch Initiative\r\n";
     RetType uartRet = uart.init();
+    HAL_UART_Transmit(&huart2, uartBuffer, 18, 1000);
+
+//    uart.write(uartBuffer, 20);
+
 
     HALGPIODevice
     gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
@@ -153,10 +162,10 @@ int main(void) {
     BMP390
     bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
     RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
-    while (bmpRet != RET_SUCCESS) {
-        led.toggle();
-        HAL_Delay(500);
-    }
+//    while (bmpRet != RET_SUCCESS) {
+//        led.toggle();
+//        HAL_Delay(500);
+//    }
 
 
     uint8_t data[256] = {};
@@ -164,10 +173,20 @@ int main(void) {
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
+    int i = 0;
+    uint8_t uartBuffer2[100];
     while (1) {
-        /* USER CODE END WHILE */
+
         led.toggle();
-        HAL_Delay(50);
+        uart.write(uartBuffer, 20);
+
+        sprintf((char *) uartBuffer2, "%d\n", i++);
+        HAL_UART_Transmit(&huart2, uartBuffer2, 3, 1000);
+
+
+        HAL_Delay(500);
+
+        /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */
     }
     /* USER CODE END 3 */
@@ -375,6 +394,37 @@ static void MX_UART4_Init(void) {
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void) {
+
+    /* USER CODE BEGIN USART2_Init 0 */
+
+    /* USER CODE END USART2_Init 0 */
+
+    /* USER CODE BEGIN USART2_Init 1 */
+
+    /* USER CODE END USART2_Init 1 */
+    huart2.Instance = USART2;
+    huart2.Init.BaudRate = 9600;
+    huart2.Init.WordLength = UART_WORDLENGTH_8B;
+    huart2.Init.StopBits = UART_STOPBITS_1;
+    huart2.Init.Parity = UART_PARITY_NONE;
+    huart2.Init.Mode = UART_MODE_TX_RX;
+    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&huart2) != HAL_OK) {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN USART2_Init 2 */
+
+    /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -423,9 +473,8 @@ int8_t bmp_read2(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
 int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
     uint8_t devAddr = (*(uint8_t *) intfPtr);
 
-// send register address
-    HAL_I2C_Master_Transmit(&hi2c1, devAddr, &regAddr, 1, 1000);
-    HAL_I2C_Master_Receive(&hi2c1, devAddr, data, len, 1000);
+    HAL_I2C_Master_Transmit(&hi2c1, 0x76, &regAddr, 1, 1000);
+    HAL_I2C_Master_Receive(&hi2c1, 0x76, data, len, 1000);
     return 0;
 }
 
