@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <string.h>
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_UARTDevice.h"
@@ -124,13 +125,12 @@ int main(void) {
     MX_I2C3_Init();
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
-    HALUARTDevice
-    uart("UART", &huart2);
+    HALUARTDevice uart("UART", &huart2);
     uint8_t uartBuffer[100] = "Launch Initiative\r\n";
     RetType uartRet = uart.init();
-    HAL_UART_Transmit(&huart2, uartBuffer, 18, 1000);
+//    HAL_UART_Transmit_IT(&huart2, uartBuffer, 18);
 
-//    uart.write(uartBuffer, 20);
+    uart.write(uartBuffer, 18);
 
 
     HALGPIODevice
@@ -178,15 +178,16 @@ int main(void) {
     while (1) {
 
         led.toggle();
-        uart.write(uartBuffer, 20);
 
-        sprintf((char *) uartBuffer2, "%d\n", i++);
-        HAL_UART_Transmit(&huart2, uartBuffer2, 3, 1000);
-
+        sprintf((char *) uartBuffer2, "%d\n\r", i++);
+//        HAL_UART_Transmit_IT(&huart2, uartBuffer2, 3);
+        uart.write(uartBuffer2, 4);
+        uart.write(uartBuffer2, 4);
 
         HAL_Delay(500);
 
         /* USER CODE END WHILE */
+
         /* USER CODE BEGIN 3 */
     }
     /* USER CODE END 3 */
