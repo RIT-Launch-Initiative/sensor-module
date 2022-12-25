@@ -150,7 +150,8 @@ int main(void) {
 
     bmp3_calib_data bmp3CalibData;
     uint8_t devAddr = BMP3_ADDR_I2C_PRIM;
-    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
+    BMP390
+    bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
     RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
     while (bmpRet != RET_SUCCESS) {
         led.toggle();
@@ -405,20 +406,29 @@ void bmp_delay(uint32_t period, void *intf_ptr) {
 }
 
 int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfPtr) {
-    (void) intfPtr;
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&hi2c1, BMP3_ADDR_I2C_PRIM, regAddr, I2C_MEMADD_SIZE_8BIT, (uint8_t *) data, len);
-    HAL_Delay(1000);
+    uint8_t deviceAddr = *(uint8_t *) intfPtr;
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&hi2c1, deviceAddr, regAddr, I2C_MEMADD_SIZE_8BIT, (uint8_t *) data,
+                                                    len);
+
+    return status == HAL_OK ? 0 : -1;
+}
+
+int8_t bmp_read2(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
+    uint8_t deviceAddr = *(uint8_t *) intfPtr;
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, deviceAddr, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
 
     return status == HAL_OK ? 0 : -1;
 }
 
 int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
-    (void) intfPtr;
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, BMP3_ADDR_I2C_PRIM, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
-    HAL_Delay(1000);
+    uint8_t devAddr = (*(uint8_t *) intfPtr);
 
-    return status == HAL_OK ? 0 : -1;
+// send register address
+    HAL_I2C_Master_Transmit(&hi2c1, devAddr, &regAddr, 1, 1000);
+    HAL_I2C_Master_Receive(&hi2c1, devAddr, data, len, 1000);
+    return 0;
 }
+
 
 /* USER CODE END 4 */
 
