@@ -143,30 +143,20 @@ int main(void) {
     w25q.init();
     w25q.toggleWrite(WRITE_SET_ENABLE);
 
-    HALI2CDevice
-    bmpI2C("BMP390 I2C", &hi2c1);
-    bmp3_calib_data bmp3CalibData;
-//    uint8_t try = 1;
-    uint8_t index = 0;
-    uint16_t settings_sel;
-    uint16_t settings_fifo;
-    uint16_t fifo_length = 0;
-//    uint8_t fifo_data[FIFO_MAX_SIZE];
-//    struct bmp3_data fifo_p_t_data[FIFO_MAX_SIZE];
-//    struct bmp3_fifo_settings fifo_settings = { 0 };
-//    struct bmp3_settings settings = { 0 };
-//    struct bmp3_fifo_data fifo = { 0 };
-//    struct bmp3_status status = { { 0 } };
-    uint8_t devAddr = BMP3_ADDR_I2C_PRIM;
-    BMP390 bmp390(&devAddr, BMP3_I2C_INTF, bmp3CalibData, &bmp_delay, nullptr, &bmpI2C);
-    RetType bmpRet = bmp390.init();
+    HALI2CDevice bmpI2C = HALI2CDevice("BMP390 I2C", &hi2c1);
+    RetType bmpI2CRet = bmpI2C.init();
+    HAL_Delay(1000);
 
-    if (bmpRet != RET_SUCCESS) {
-        while (1) {
-            led.toggle();
-            HAL_Delay(100);
-        }
+
+    bmp3_calib_data bmp3CalibData;
+    uint8_t devAddr = BMP3_ADDR_I2C_PRIM;
+    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
+    RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
+    while (bmpRet != RET_SUCCESS) {
+        led.toggle();
+        HAL_Delay(500);
     }
+
 
     uint8_t data[256] = {};
     /* USER CODE END 2 */
@@ -175,7 +165,8 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
     while (1) {
         /* USER CODE END WHILE */
-
+        led.toggle();
+        HAL_Delay(50);
         /* USER CODE BEGIN 3 */
     }
     /* USER CODE END 3 */
@@ -411,6 +402,22 @@ static void MX_GPIO_Init(void) {
 void bmp_delay(uint32_t period, void *intf_ptr) {
     (void) intf_ptr;
     HAL_Delay(period);
+}
+
+int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfPtr) {
+    (void) intfPtr;
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&hi2c1, BMP3_ADDR_I2C_PRIM, regAddr, I2C_MEMADD_SIZE_8BIT, (uint8_t *) data, len);
+    HAL_Delay(1000);
+
+    return status == HAL_OK ? 0 : -1;
+}
+
+int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
+    (void) intfPtr;
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, BMP3_ADDR_I2C_PRIM, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
+    HAL_Delay(1000);
+
+    return status == HAL_OK ? 0 : -1;
 }
 
 /* USER CODE END 4 */
