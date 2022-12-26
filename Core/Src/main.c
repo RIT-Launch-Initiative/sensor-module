@@ -83,49 +83,14 @@ static void MX_I2C2_Init(void);
 static void MX_I2C3_Init(void);
 
 static void MX_USART2_UART_Init(void);
+
 /* USER CODE BEGIN PFP */
+static void print_bmp_data(BMP390 *bmp);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void print_bmp_data(BMP390 *bmp) {
-    RetType bmpRetAPI = RET_SUCCESS;
-    bmp3_status bmpStatus = {};
-    bmp3_data bmpData = {};
-    uint8_t uartBuffer2[100];
-
-    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP, &bmpData);
-    if (bmpRetAPI != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to get bmp390 data\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
-    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
-    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    bmpRetAPI = bmp->getStatus(&bmpStatus);
-    if (bmpRetAPI != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
-    HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
-    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
-
-}
 
 /* USER CODE END 0 */
 
@@ -196,7 +161,8 @@ int main(void) {
 
     uint8_t devAddr = BMP3_ADDR_I2C_SEC;
     bmp3_calib_data bmp3CalibData = {};
-    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
+    BMP390
+    bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
     RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
     if (bmpRet != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
@@ -495,10 +461,86 @@ int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfP
 int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
     uint8_t deviceAddr = *(uint8_t *) intfPtr;
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c1, deviceAddr << 1, regAddr, 1, data, len, 10);
-    // TODO: Interrupt mode not working atm. Check on this later. Maybe use cplt callback?
+    // TODO: Interrupt mode not working atm. Check on this later.
 //    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, 0x77 << 1, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
 
     return status == HAL_OK ? 0 : -1;
+}
+
+void print_bmp_data(BMP390 *bmp) {
+    RetType bmpRetAPI = RET_SUCCESS;
+    bmp3_status bmpStatus = {};
+    bmp3_data bmpData = {};
+    uint8_t uartBuffer2[100];
+
+    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP, &bmpData);
+    if (bmpRetAPI != RET_SUCCESS) {
+        const char *bmpErrStr = "Failed to get bmp390 data\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+    }
+
+    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
+    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
+    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
+    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
+    bmpRetAPI = bmp->getStatus(&bmpStatus);
+    if (bmpRetAPI != RET_SUCCESS) {
+        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+    }
+
+    HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
+    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
+    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
+    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
+    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
+    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
+    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
+    HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
+
+}
+
+void print_bmp_data_it(BMP390 *bmp, HALUARTDevice *uart) {
+    RetType bmpRetAPI = RET_SUCCESS;
+    bmp3_status bmpStatus = {};
+    bmp3_data bmpData = {};
+    uint8_t uartBuffer2[100];
+
+    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP, &bmpData);
+    if (bmpRetAPI != RET_SUCCESS) {
+        const char *bmpErrStr = "Failed to get bmp390 data\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+    }
+
+    uart->write((uint8_t *) "Temperature: ", 13);
+    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
+    uart->write(uartBuffer2, strlen((char *) uartBuffer2));
+    uart->write((uint8_t *) "Pressure: ", 10);
+    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
+    uart->write(uartBuffer2, strlen((char *) uartBuffer2));
+
+    bmpRetAPI = bmp->getStatus(&bmpStatus);
+    if (bmpRetAPI != RET_SUCCESS) {
+        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+    }
+
+    uart->write((uint8_t *) "Errors: \n\r", 10);
+    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
+    uart->write(uartBuffer2, strlen((char *) uartBuffer2));
+
+    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
+    uart->write(uartBuffer2, strlen((char *) uartBuffer2));
+
+    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
+    uart->write(uartBuffer2, strlen((char *) uartBuffer2));
+    uart->write((uint8_t *) "------------------------\r\n", 26);
+
 }
 
 
