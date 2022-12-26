@@ -58,6 +58,7 @@ int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfP
 int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr);
 
 
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

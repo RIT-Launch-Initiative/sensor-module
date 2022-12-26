@@ -28,6 +28,7 @@
 #include "device/platforms/stm32/HAL_UARTDevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
+#include "device/platforms/stm32/HAL_Callbacks.h"
 
 
 #include "device/peripherals/LED/LED.h"
@@ -156,40 +157,14 @@ int main(void) {
     HAL_Delay(1000);
 
 
-    bmp3_calib_data bmp3CalibData;
     uint8_t devAddr = BMP3_ADDR_I2C_SEC;
+    bmp3_calib_data bmp3CalibData = {};
+    bmp3_status bmpStatus = {};
+    bmp3_data bmpData = {};
     BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
     RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
     if (bmpRet != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
-    // TODO: Maybe store these in bmp3 class and have it set the settigns already
-    bmp3_status bmpStatus = {};
-    bmp3_data bmpData = {};
-    struct bmp3_settings settings = {0};
-    settings.int_settings.drdy_en = BMP3_ENABLE;
-    settings.press_en = BMP3_ENABLE;
-    settings.temp_en = BMP3_ENABLE;
-
-    settings.odr_filter.press_os = BMP3_OVERSAMPLING_2X;
-    settings.odr_filter.temp_os = BMP3_OVERSAMPLING_2X;
-    settings.odr_filter.odr = BMP3_ODR_100_HZ;
-
-    uint16_t settings_sel = BMP3_SEL_PRESS_EN | BMP3_SEL_TEMP_EN | BMP3_SEL_PRESS_OS | BMP3_SEL_TEMP_OS | BMP3_SEL_ODR |
-                            BMP3_SEL_DRDY_EN;
-
-    bmpRet = bmp390.setSensorSettings(settings_sel, &settings);
-    if (bmpRet != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to set bmp390 settings\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
-    settings.op_mode = BMP3_MODE_NORMAL;
-    bmpRet = bmp390.setOperatingMode(&settings);
-    if (bmpRet != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to set bmp390 settings\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
 
@@ -234,7 +209,6 @@ int main(void) {
         HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
 
         HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
-
 
         HAL_Delay(1000);
 
@@ -520,7 +494,6 @@ int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfP
 int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
     uint8_t deviceAddr = *(uint8_t *) intfPtr;
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c1, deviceAddr << 1, regAddr, 1, data, len, 10);
-
     // TODO: Interrupt mode not working atm. Check on this later. Maybe use cplt callback?
 //    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, 0x77 << 1, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
 
