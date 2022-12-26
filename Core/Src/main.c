@@ -145,6 +145,7 @@ int main(void) {
     RetType csRet = csPin.init();
 
     HALGPIODevice clkPin = HALGPIODevice("W25Q CLK", GPIOB, GPIO_PIN_13);
+    clkPin.init();
 
     W25Q w25q(spiDevice, csPin, clkPin);
     w25q.init();
@@ -156,29 +157,54 @@ int main(void) {
 
 
     bmp3_calib_data bmp3CalibData;
-    uint8_t devAddr = BMP3_ADDR_I2C_PRIM;
-    BMP390
-    bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
+    uint8_t devAddr = BMP3_ADDR_I2C_SEC;
+    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
     RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
     if (bmpRet != RET_SUCCESS) {
-        HAL_UART_Transmit(&huart2, (const uint8_t *) "Failed to init bmp390\n\r",
-                          strlen((char *) "Failed to init bmp390\n\r"), 100);
+        const char *bmpErrStr = "Failed to init bmp390\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
+
+    bmp3_status bmpStatus = {};
+    bmp3_data bmpData = {};
 
 
     uint8_t data[256] = {};
     /* USER CODE END 2 */
-
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     int i = 0;
     uint8_t uartBuffer2[100];
+    RetType bmpRetAPI = RET_SUCCESS;
     while (1) {
 
         led.toggle();
-//        uint8_t result;
-//        sprintf((char *) uartBuffer2, "Result: %d\r\n", result);
-//        HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 1000);
+
+        bmpRetAPI = bmp390.getSensorData(BMP3_PRESS_TEMP, &bmpData);
+        if (bmpRetAPI != RET_SUCCESS) {
+            const char *bmpErrStr = "Failed to get bmp390 data\n\r";
+            HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+        }
+        sprintf((char *) uartBuffer2, "Temperature: %f\r\n", bmpData.temperature);
+        HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+        sprintf((char *) uartBuffer2, "Pressure: %f\r\n", bmpData.pressure);
+        HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
+        bmpRetAPI = bmp390.getStatus(&bmpStatus);
+        if (bmpRetAPI != RET_SUCCESS) {
+            const char *bmpErrStr = "Failed to get bmp390 status\n\r";
+            HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+        }
+
+        sprintf((char *) uartBuffer2, "BMP Error Status Fatal: %d\r\n", bmpStatus.err.fatal);
+        HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
+        sprintf((char *) uartBuffer2, "BMP Error Status Cmd: %d\r\n", bmpStatus.err.cmd);
+        HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
+        sprintf((char *) uartBuffer2, "BMP Error Status Conf: %d\r\n", bmpStatus.err.conf);
+        HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+
 
         HAL_Delay(500);
 
@@ -462,7 +488,7 @@ int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfP
 
 int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
     uint8_t deviceAddr = *(uint8_t *) intfPtr;
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c1, 0x77 << 1, regAddr, 1, data, len, 10);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c1, deviceAddr << 1, regAddr, 1, data, len, 10);
 
     // TODO: Interrupt mode not working atm. Check on this later. Maybe use cplt callback?
 //    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, 0x77 << 1, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
