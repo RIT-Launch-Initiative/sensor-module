@@ -165,8 +165,33 @@ int main(void) {
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
 
+    // TODO: Maybe store these in bmp3 class and have it set the settigns already
     bmp3_status bmpStatus = {};
     bmp3_data bmpData = {};
+    struct bmp3_settings settings = {0};
+    settings.int_settings.drdy_en = BMP3_ENABLE;
+    settings.press_en = BMP3_ENABLE;
+    settings.temp_en = BMP3_ENABLE;
+
+    settings.odr_filter.press_os = BMP3_OVERSAMPLING_2X;
+    settings.odr_filter.temp_os = BMP3_OVERSAMPLING_2X;
+    settings.odr_filter.odr = BMP3_ODR_100_HZ;
+
+    uint16_t settings_sel = BMP3_SEL_PRESS_EN | BMP3_SEL_TEMP_EN | BMP3_SEL_PRESS_OS | BMP3_SEL_TEMP_OS | BMP3_SEL_ODR |
+                            BMP3_SEL_DRDY_EN;
+
+    bmpRet = bmp390.setSensorSettings(settings_sel, &settings);
+    if (bmpRet != RET_SUCCESS) {
+        const char *bmpErrStr = "Failed to set bmp390 settings\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+    }
+
+    settings.op_mode = BMP3_MODE_NORMAL;
+    bmpRet = bmp390.setOperatingMode(&settings);
+    if (bmpRet != RET_SUCCESS) {
+        const char *bmpErrStr = "Failed to set bmp390 settings\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+    }
 
 
     uint8_t data[256] = {};
@@ -185,9 +210,11 @@ int main(void) {
             const char *bmpErrStr = "Failed to get bmp390 data\n\r";
             HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
         }
-        sprintf((char *) uartBuffer2, "Temperature: %f\r\n", bmpData.temperature);
+
+        HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
+        sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
         HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-        sprintf((char *) uartBuffer2, "Pressure: %f\r\n", bmpData.pressure);
+        sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
         HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
 
         bmpRetAPI = bmp390.getStatus(&bmpStatus);
@@ -196,17 +223,20 @@ int main(void) {
             HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
         }
 
-        sprintf((char *) uartBuffer2, "BMP Error Status Fatal: %d\r\n", bmpStatus.err.fatal);
+        HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
+        sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
         HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
 
-        sprintf((char *) uartBuffer2, "BMP Error Status Cmd: %d\r\n", bmpStatus.err.cmd);
+        sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
         HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
 
-        sprintf((char *) uartBuffer2, "BMP Error Status Conf: %d\r\n", bmpStatus.err.conf);
+        sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
         HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
 
+        HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
 
-        HAL_Delay(500);
+
+        HAL_Delay(1000);
 
         /* USER CODE END WHILE */
 
@@ -480,8 +510,9 @@ void bmp_delay(uint32_t period, void *intf_ptr) {
 
 int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfPtr) {
     uint8_t deviceAddr = *(uint8_t *) intfPtr;
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&hi2c1, deviceAddr, regAddr, I2C_MEMADD_SIZE_8BIT, (uint8_t *) data,
-                                                    len);
+    // TODO: Interrupt Mode <3
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Write(&hi2c1, deviceAddr << 1, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                                 (uint8_t *) data, len, 10);
 
     return status == HAL_OK ? 0 : -1;
 }
