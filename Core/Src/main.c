@@ -128,30 +128,24 @@ int main(void) {
     MX_I2C3_Init();
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
-    HALUARTDevice
-    uart("UART", &huart2);
+    HALUARTDevice uart("UART", &huart2);
     uint8_t uartBuffer[100] = "Launch Initiative\r\n";
     RetType uartRet = uart.init();
 
-
-    HALGPIODevice
-    gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
+    HALGPIODevice gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
+    LED led(gpioDevice);
     RetType gpioRet = gpioDevice.init();
-    LED led = LED(gpioDevice);
     RetType ledRet = led.init();
 
-    HALSPIDevice
-    spiDevice("W25Q SPI", &hspi1);
-    RetType spiRet = spiDevice.init();
-
-    HALGPIODevice csPin = HALGPIODevice("W25Q CS", GPIOB, GPIO_PIN_12);
-    RetType csRet = csPin.init();
-
-    HALGPIODevice clkPin = HALGPIODevice("W25Q CLK", GPIOB, GPIO_PIN_13);
-    clkPin.init();
-
+    HALSPIDevice spiDevice("W25Q SPI", &hspi1);
+    HALGPIODevice csPin("W25Q CS", GPIOB, GPIO_PIN_12);
+    HALGPIODevice clkPin("W25Q CLK", GPIOB, GPIO_PIN_13);
     W25Q w25q(spiDevice, csPin, clkPin);
+    spiDevice.init();
+    csPin.init();
+    clkPin.init();
     w25q.init();
+
     w25q.toggleWrite(WRITE_SET_ENABLE);
 
     HALI2CDevice bmpI2C = HALI2CDevice("BMP390 I2C", &hi2c1);
@@ -161,8 +155,7 @@ int main(void) {
 
     uint8_t devAddr = BMP3_ADDR_I2C_SEC;
     bmp3_calib_data bmp3CalibData = {};
-    BMP390
-    bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
+    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
     RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
     if (bmpRet != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
