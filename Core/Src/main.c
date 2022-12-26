@@ -125,12 +125,10 @@ int main(void) {
     MX_I2C3_Init();
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
-    HALUARTDevice uart("UART", &huart2);
+    HALUARTDevice
+    uart("UART", &huart2);
     uint8_t uartBuffer[100] = "Launch Initiative\r\n";
     RetType uartRet = uart.init();
-//    HAL_UART_Transmit_IT(&huart2, uartBuffer, 18);
-
-    uart.write(uartBuffer, 18);
 
 
     HALGPIODevice
@@ -162,10 +160,10 @@ int main(void) {
     BMP390
     bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
     RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
-//    while (bmpRet != RET_SUCCESS) {
-//        led.toggle();
-//        HAL_Delay(500);
-//    }
+    if (bmpRet != RET_SUCCESS) {
+        HAL_UART_Transmit(&huart2, (const uint8_t *) "Failed to init bmp390\n\r",
+                          strlen((char *) "Failed to init bmp390\n\r"), 100);
+    }
 
 
     uint8_t data[256] = {};
@@ -178,11 +176,9 @@ int main(void) {
     while (1) {
 
         led.toggle();
-
-        sprintf((char *) uartBuffer2, "%d\n\r", i++);
-//        HAL_UART_Transmit_IT(&huart2, uartBuffer2, 3);
-        uart.write(uartBuffer2, 4);
-        uart.write(uartBuffer2, 4);
+//        uint8_t result;
+//        sprintf((char *) uartBuffer2, "Result: %d\r\n", result);
+//        HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 1000);
 
         HAL_Delay(500);
 
@@ -464,19 +460,14 @@ int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfP
     return status == HAL_OK ? 0 : -1;
 }
 
-int8_t bmp_read2(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
+int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
     uint8_t deviceAddr = *(uint8_t *) intfPtr;
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, deviceAddr, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c1, 0x77 << 1, regAddr, 1, data, len, 10);
+
+    // TODO: Interrupt mode not working atm. Check on this later. Maybe use cplt callback?
+//    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, 0x77 << 1, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
 
     return status == HAL_OK ? 0 : -1;
-}
-
-int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
-    uint8_t devAddr = (*(uint8_t *) intfPtr);
-
-    HAL_I2C_Master_Transmit(&hi2c1, 0x76, &regAddr, 1, 1000);
-    HAL_I2C_Master_Receive(&hi2c1, 0x76, data, len, 1000);
-    return 0;
 }
 
 
