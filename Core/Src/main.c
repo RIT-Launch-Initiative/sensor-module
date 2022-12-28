@@ -28,7 +28,6 @@
 #include "device/platforms/stm32/HAL_UARTDevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
-#include "device/platforms/stm32/HAL_Callbacks.h"
 
 
 #include "device/peripherals/LED/LED.h"
@@ -91,7 +90,29 @@ static void print_bmp_data(BMP390 *bmp);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint32_t HAL_ID_READ() {
+    uint32_t Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
+    HAL_StatusTypeDef ret = HAL_SPI_Transmit(&hspi1, (uint8_t *) 0x9F, 1, 100);
+    if (ret != HAL_OK) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI Transmit Error\r\n", 20, 100);
+    }
+    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t *) &Temp0, 1, 100);
+    if (ret != HAL_OK) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
+    }
+    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t *) &Temp1, 1, 100);
+    if (ret != HAL_OK) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
+    }
+    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t *) &Temp2, 1, 100);
+    if (ret != HAL_OK) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
+    }
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
+    Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
+    return Temp;
+}
 /* USER CODE END 0 */
 
 /**
@@ -138,13 +159,18 @@ int main(void) {
     RetType ledRet = led.init();
 
     HALSPIDevice spiDevice("W25Q SPI", &hspi1);
-    HALGPIODevice csPin("W25Q CS", GPIOB, GPIO_PIN_12);
+    HALGPIODevice csPin("W25Q CS", GPIOA, GPIO_PIN_6);
     HALGPIODevice clkPin("W25Q CLK", GPIOB, GPIO_PIN_13);
     W25Q w25q(spiDevice, csPin, clkPin);
     spiDevice.init();
     csPin.init();
     clkPin.init();
-    w25q.init();
+    RetType w25qInit = w25q.init();
+    if (w25qInit != RET_SUCCESS) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "W25Q init failed\r\n", 18, 100);
+    }
+
+    uint32_t id = HAL_ID_READ();
 
     w25q.toggleWrite(WRITE_SET_ENABLE);
 
@@ -164,6 +190,7 @@ int main(void) {
 
 
     /* USER CODE END 2 */
+
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
@@ -427,12 +454,22 @@ static void MX_GPIO_Init(void) {
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+
     /*Configure GPIO pin : PA5 */
     GPIO_InitStruct.Pin = GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /*Configure GPIO pin : PB6 */
+    GPIO_InitStruct.Pin = GPIO_PIN_6;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
