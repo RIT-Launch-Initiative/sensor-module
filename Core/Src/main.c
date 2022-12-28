@@ -31,8 +31,8 @@
 
 
 #include "device/peripherals/LED/LED.h"
-#include "device/peripherals/w25q/w25q.h"
-#include "device/peripherals/bmp390/bmp390.h"
+#include "device/peripherals/W25Q/W25Q.h"
+#include "device/peripherals/BMP390/BMP390.h"
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
