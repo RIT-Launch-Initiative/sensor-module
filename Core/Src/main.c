@@ -33,6 +33,8 @@
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP390/BMP390.h"
+//#include "device/peripherals/BMP390/BMP3902.h"
+
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -58,8 +60,8 @@ I2C_HandleTypeDef hi2c2;
 I2C_HandleTypeDef hi2c3;
 
 SPI_HandleTypeDef hspi1;
+SPI_HandleTypeDef hspi2;
 
-UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -73,8 +75,6 @@ static void MX_GPIO_Init(void);
 
 static void MX_SPI1_Init(void);
 
-static void MX_UART4_Init(void);
-
 static void MX_I2C1_Init(void);
 
 static void MX_I2C2_Init(void);
@@ -82,6 +82,8 @@ static void MX_I2C2_Init(void);
 static void MX_I2C3_Init(void);
 
 static void MX_USART2_UART_Init(void);
+
+static void MX_SPI2_Init(void);
 
 /* USER CODE BEGIN PFP */
 static void print_bmp_data(BMP390 *bmp);
@@ -97,15 +99,15 @@ uint32_t HAL_ID_READ() {
     if (ret != HAL_OK) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "SPI Transmit Error\r\n", 20, 100);
     }
-    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t *) &Temp0, 1, 100);
+    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t * ) & Temp0, 1, 100);
     if (ret != HAL_OK) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
     }
-    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t *) &Temp1, 1, 100);
+    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t * ) & Temp1, 1, 100);
     if (ret != HAL_OK) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
     }
-    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t *) &Temp2, 1, 100);
+    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t * ) & Temp2, 1, 100);
     if (ret != HAL_OK) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
     }
@@ -143,11 +145,11 @@ int main(void) {
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_SPI1_Init();
-    MX_UART4_Init();
     MX_I2C1_Init();
     MX_I2C2_Init();
     MX_I2C3_Init();
     MX_USART2_UART_Init();
+    MX_SPI2_Init();
     /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
     uint8_t uartBuffer[100] = "Launch Initiative\r\n";
@@ -187,6 +189,17 @@ int main(void) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
+
+//    Version 2
+//    uint8_t devAddr = BMP3_ADDR_I2C_SEC;
+//    bmp3_calib_data bmp3CalibData = {};
+//    BMP390
+//    bmp390(&bmpI2C);
+//    RetType bmpRet = bmp390.init();
+//    if (bmpRet != RET_SUCCESS) {
+//        const char *bmpErrStr = "Failed to init bmp390\n\r";
+//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+//    }
 
 
     /* USER CODE END 2 */
@@ -377,33 +390,38 @@ static void MX_SPI1_Init(void) {
 }
 
 /**
-  * @brief UART4 Initialization Function
+  * @brief SPI2 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_UART4_Init(void) {
+static void MX_SPI2_Init(void) {
 
-    /* USER CODE BEGIN UART4_Init 0 */
+    /* USER CODE BEGIN SPI2_Init 0 */
 
-    /* USER CODE END UART4_Init 0 */
+    /* USER CODE END SPI2_Init 0 */
 
-    /* USER CODE BEGIN UART4_Init 1 */
+    /* USER CODE BEGIN SPI2_Init 1 */
 
-    /* USER CODE END UART4_Init 1 */
-    huart4.Instance = UART4;
-    huart4.Init.BaudRate = 115200;
-    huart4.Init.WordLength = UART_WORDLENGTH_8B;
-    huart4.Init.StopBits = UART_STOPBITS_1;
-    huart4.Init.Parity = UART_PARITY_NONE;
-    huart4.Init.Mode = UART_MODE_TX_RX;
-    huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart4.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart4) != HAL_OK) {
+    /* USER CODE END SPI2_Init 1 */
+    /* SPI2 parameter configuration*/
+    hspi2.Instance = SPI2;
+    hspi2.Init.Mode = SPI_MODE_MASTER;
+    hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+    hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+    hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+    hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+    hspi2.Init.NSS = SPI_NSS_SOFT;
+    hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+    hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+    hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    hspi2.Init.CRCPolynomial = 10;
+    if (HAL_SPI_Init(&hspi2) != HAL_OK) {
         Error_Handler();
     }
-    /* USER CODE BEGIN UART4_Init 2 */
+    /* USER CODE BEGIN SPI2_Init 2 */
 
-    /* USER CODE END UART4_Init 2 */
+    /* USER CODE END SPI2_Init 2 */
 
 }
 
@@ -447,9 +465,9 @@ static void MX_GPIO_Init(void) {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
@@ -585,6 +603,7 @@ void Error_Handler(void) {
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "Error\n\r", 7, 100);
     }
     /* USER CODE END Error_Handler_Debug */
 }
