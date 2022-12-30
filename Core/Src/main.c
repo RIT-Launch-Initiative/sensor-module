@@ -181,7 +181,7 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
     while (1) {
         led.toggle();
-//        print_bmp_data(&bmp390);
+        print_bmp_data(&bmp390);
 
         HAL_Delay(1000);
 
@@ -495,7 +495,7 @@ void print_bmp_data(BMP390 *bmp) {
     uint8_t uartBuffer2[100];
 
     bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP);
-//    bmpData = bmp->getData();
+    bmpData = bmp->getData();
 
     if (bmpRetAPI != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to get bmp390 data\n\r";
