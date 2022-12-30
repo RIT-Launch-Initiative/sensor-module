@@ -494,14 +494,7 @@ void print_bmp_data(BMP390 *bmp) {
     bmp3_data bmpData = {};
     uint8_t uartBuffer2[100];
 
-    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP);
-    bmpData = bmp->getData();
-
-    if (bmpRetAPI != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to get bmp390 data\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
+    bmpData = bmp->getSensorData();
     HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
     sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
     HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
@@ -534,12 +527,7 @@ void print_bmp_data_it(BMP390 *bmp, HALUARTDevice *uart) {
     bmp3_data bmpData = {};
     uint8_t uartBuffer2[100];
 
-    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP);
-    if (bmpRetAPI != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to get bmp390 data\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
+    bmpData = bmp->getSensorData();
     uart->write((uint8_t *) "Temperature: ", 13);
     sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
     uart->write(uartBuffer2, strlen((char *) uartBuffer2));
