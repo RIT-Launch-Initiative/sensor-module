@@ -32,8 +32,8 @@
 
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
-#include "device/peripherals/BMP390/BMP390.h"
-//#include "device/peripherals/BMP390/BMP3902.h"
+//#include "device/peripherals/BMP390/BMP390.h"
+#include "device/peripherals/BMP390/BMP3902.h"
 
 
 
@@ -143,13 +143,13 @@ int main(void) {
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_SPI1_Init();
     MX_I2C1_Init();
     MX_I2C2_Init();
     MX_I2C3_Init();
     MX_USART2_UART_Init();
+    MX_SPI1_Init();
     MX_SPI2_Init();
+    MX_GPIO_Init();
     /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
     uint8_t uartBuffer[100] = "Launch Initiative\r\n";
@@ -180,26 +180,23 @@ int main(void) {
     RetType bmpI2CRet = bmpI2C.init();
     HAL_Delay(1000);
 
-
-    uint8_t devAddr = BMP3_ADDR_I2C_SEC;
-    bmp3_calib_data bmp3CalibData = {};
-    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
-    RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
-    if (bmpRet != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to init bmp390\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
-//    Version 2
+//
 //    uint8_t devAddr = BMP3_ADDR_I2C_SEC;
 //    bmp3_calib_data bmp3CalibData = {};
-//    BMP390
-//    bmp390(&bmpI2C);
-//    RetType bmpRet = bmp390.init();
+//    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
+//    RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
 //    if (bmpRet != RET_SUCCESS) {
 //        const char *bmpErrStr = "Failed to init bmp390\n\r";
 //        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
 //    }
+
+//    Version 2
+    BMP390 bmp390(&bmpI2C);
+    RetType bmpRet = bmp390.init();
+    if (bmpRet != RET_SUCCESS) {
+        const char *bmpErrStr = "Failed to init bmp390\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+    }
 
 
     /* USER CODE END 2 */
@@ -521,7 +518,9 @@ void print_bmp_data(BMP390 *bmp) {
     bmp3_data bmpData = {};
     uint8_t uartBuffer2[100];
 
-    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP, &bmpData);
+    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP);
+//    bmpData = bmp->getData();
+
     if (bmpRetAPI != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to get bmp390 data\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
@@ -559,7 +558,7 @@ void print_bmp_data_it(BMP390 *bmp, HALUARTDevice *uart) {
     bmp3_data bmpData = {};
     uint8_t uartBuffer2[100];
 
-    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP, &bmpData);
+    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP);
     if (bmpRetAPI != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to get bmp390 data\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
