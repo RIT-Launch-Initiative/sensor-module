@@ -184,7 +184,7 @@ int main(void) {
     uint8_t devAddr = BMP3_ADDR_I2C_SEC;
     bmp3_calib_data bmp3CalibData = {};
     BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
-    RetType bmpRet = bmp390.init(&bmp_read, &bmp_write);
+    RetType bmpRet = bmp390.init(&bmp_read_it, &bmp_write_it);
     if (bmpRet != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
@@ -511,6 +511,28 @@ int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c1, deviceAddr << 1, regAddr, 1, data, len, 10);
     // TODO: Interrupt mode not working atm. Check on this later.
 //    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, 0x77 << 1, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
+
+    return status == HAL_OK ? 0 : -1;
+}
+
+
+int8_t bmp_write_it(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfPtr) {
+    uint8_t deviceAddr = *(uint8_t *) intfPtr;
+    // TODO: Interrupt Mode <3
+
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&hi2c1, deviceAddr << 1, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                                 (uint8_t *) data, len);
+
+    HAL_Delay(25);
+
+
+    return status == HAL_OK ? 0 : -1;
+}
+
+int8_t bmp_read_it(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr) {
+    uint8_t deviceAddr = *(uint8_t *) intfPtr;
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_IT(&hi2c1, deviceAddr << 1, regAddr, I2C_MEMADD_SIZE_8BIT, data, len);
+    HAL_Delay(25);
 
     return status == HAL_OK ? 0 : -1;
 }
