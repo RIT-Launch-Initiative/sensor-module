@@ -32,8 +32,8 @@
 
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
-#include "device/peripherals/BMP390/BMP390.h"
-//#include "device/peripherals/BMP390/BMP3902.h"
+//#include "device/peripherals/BMP390/BMP390.h"
+#include "device/peripherals/BMP390/BMP3902.h"
 
 
 
@@ -92,29 +92,6 @@ static void print_bmp_data(BMP390 *bmp);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t HAL_ID_READ() {
-    uint32_t Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
-    HAL_StatusTypeDef ret = HAL_SPI_Transmit(&hspi1, (uint8_t *) 0x9F, 1, 100);
-    if (ret != HAL_OK) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI Transmit Error\r\n", 20, 100);
-    }
-    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t * ) & Temp0, 1, 100);
-    if (ret != HAL_OK) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
-    }
-    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t * ) & Temp1, 1, 100);
-    if (ret != HAL_OK) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
-    }
-    ret = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) 0x00, (uint8_t * ) & Temp2, 1, 100);
-    if (ret != HAL_OK) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "SPI TransmitReceive Error\r\n", 27, 100);
-    }
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
-    Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
-    return Temp;
-}
 /* USER CODE END 0 */
 
 /**
@@ -143,13 +120,13 @@ int main(void) {
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_SPI1_Init();
     MX_I2C1_Init();
     MX_I2C2_Init();
     MX_I2C3_Init();
     MX_USART2_UART_Init();
+    MX_SPI1_Init();
     MX_SPI2_Init();
+    MX_GPIO_Init();
     /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
     uint8_t uartBuffer[100] = "Launch Initiative\r\n";
@@ -172,7 +149,6 @@ int main(void) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "W25Q init failed\r\n", 18, 100);
     }
 
-    uint32_t id = HAL_ID_READ();
 
     w25q.toggleWrite(WRITE_SET_ENABLE);
 
@@ -180,30 +156,14 @@ int main(void) {
     RetType bmpI2CRet = bmpI2C.init();
     HAL_Delay(1000);
 
-
-    uint8_t devAddr = BMP3_ADDR_I2C_SEC;
-    bmp3_calib_data bmp3CalibData = {};
-    BMP390 bmp390(&devAddr, bmp3CalibData, &bmp_delay, &bmpI2C);
-    RetType bmpRet = bmp390.init(&bmp_read_it, &bmp_write_it);
+    BMP390 bmp390(&bmpI2C);
+    RetType bmpRet = bmp390.init();
     if (bmpRet != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
 
-//    Version 2
-//    uint8_t devAddr = BMP3_ADDR_I2C_SEC;
-//    bmp3_calib_data bmp3CalibData = {};
-//    BMP390
-//    bmp390(&bmpI2C);
-//    RetType bmpRet = bmp390.init();
-//    if (bmpRet != RET_SUCCESS) {
-//        const char *bmpErrStr = "Failed to init bmp390\n\r";
-//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-//    }
-
-
     /* USER CODE END 2 */
-
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
@@ -543,12 +503,7 @@ void print_bmp_data(BMP390 *bmp) {
     bmp3_data bmpData = {};
     uint8_t uartBuffer2[100];
 
-    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP, &bmpData);
-    if (bmpRetAPI != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to get bmp390 data\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
+    bmpData = bmp->getSensorData();
     HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
     sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
     HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
@@ -581,12 +536,7 @@ void print_bmp_data_it(BMP390 *bmp, HALUARTDevice *uart) {
     bmp3_data bmpData = {};
     uint8_t uartBuffer2[100];
 
-    bmpRetAPI = bmp->getSensorData(BMP3_PRESS_TEMP, &bmpData);
-    if (bmpRetAPI != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to get bmp390 data\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
+    bmpData = bmp->getSensorData();
     uart->write((uint8_t *) "Temperature: ", 13);
     sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
     uart->write(uartBuffer2, strlen((char *) uartBuffer2));
