@@ -28,6 +28,8 @@
 #include "device/platforms/stm32/HAL_UARTDevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
+#include "device/platforms/stm32/HAL_TimerDevice.h"
+
 
 
 #include "device/peripherals/LED/LED.h"
@@ -128,6 +130,8 @@ int main(void) {
     MX_SPI2_Init();
     MX_GPIO_Init();
     /* USER CODE BEGIN 2 */
+    HALTimerDevice timer = HALTimerDevice();
+
     HALUARTDevice uart("UART", &huart2);
     uint8_t uartBuffer[100] = "Launch Initiative\r\n";
     RetType uartRet = uart.init();
@@ -156,7 +160,7 @@ int main(void) {
     RetType bmpI2CRet = bmpI2C.init();
     HAL_Delay(1000);
 
-    BMP390 bmp390(&bmpI2C);
+    BMP390 bmp390(&bmpI2C, &timer);
     RetType bmpRet = bmp390.init();
     if (bmpRet != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
