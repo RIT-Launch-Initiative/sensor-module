@@ -130,6 +130,11 @@ int main(void) {
     MX_SPI2_Init();
     MX_GPIO_Init();
     /* USER CODE BEGIN 2 */
+    if(!sched_init(&HAL_GetTick)) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "failed to initialize scheduler\r\n", 36, 100);
+        return -1;
+    }
+
     HALTimerDevice timer = HALTimerDevice();
 
     HALUARTDevice uart("UART", &huart2);
