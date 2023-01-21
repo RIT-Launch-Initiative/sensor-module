@@ -158,7 +158,6 @@ int main(void) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "W25Q init failed\r\n", 18, 100);
     }
 
-
     w25q.toggleWrite(WRITE_SET_ENABLE);
 
     HALI2CDevice bmpI2C = HALI2CDevice("BMP390 I2C", &hi2c1);
@@ -171,6 +170,12 @@ int main(void) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
+
+//    tid_t bmpTID = sched_start(&bmp390.getSensorData);
+//    if(-1 == bmpTID) {
+//        printf("failed to start BMP sensor task\r\n");
+//        return -1;
+//    }
 
     /* USER CODE END 2 */
     /* Infinite loop */
