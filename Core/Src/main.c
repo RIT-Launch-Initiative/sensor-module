@@ -89,11 +89,23 @@ static void MX_SPI2_Init(void);
 
 /* USER CODE BEGIN PFP */
 static void print_bmp_data(BMP390 *bmp);
+static BMP390 bmp390(nullptr, nullptr);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+RetType bmpTask() {
+    RESUME();
+
+    RetType ret = CALL(bmp390.pullSensorData());
+
+    RESET();
+    return ret;
+}
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -162,26 +174,27 @@ int main(void) {
 
     HALI2CDevice bmpI2C = HALI2CDevice("BMP390 I2C", &hi2c1);
     RetType bmpI2CRet = bmpI2C.init();
-    HAL_Delay(1000);
 
-    BMP390 bmp390(&bmpI2C, &timer);
+    bmp390 = BMP390(&bmpI2C, &timer);
     RetType bmpRet = bmp390.init();
     if (bmpRet != RET_SUCCESS) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
 
-//    tid_t bmpTID = sched_start(&bmp390.getSensorData);
-//    if(-1 == bmpTID) {
-//        printf("failed to start BMP sensor task\r\n");
-//        return -1;
-//    }
+    tid_t bmpTID = sched_start(&bmpTask);
+    if (-1 == bmpTID) {
+        printf("failed to start BMP sensor task\r\n");
+        return -1;
+    }
 
     /* USER CODE END 2 */
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
         led.toggle();
+        sched_dispatch();
+
         print_bmp_data(&bmp390);
 
         HAL_Delay(1000);
