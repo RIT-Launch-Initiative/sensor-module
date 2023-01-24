@@ -99,6 +99,8 @@ RetType bmpTask() {
     RESUME();
 
     RetType ret = CALL(bmp390.pullSensorData());
+    HAL_UART_Transmit(&huart2, (uint8_t *) "BMP Task Executing\r\n", 20, 100);
+    print_bmp_data(&bmp390);
 
     RESET();
     return ret;
@@ -194,9 +196,7 @@ int main(void) {
     while (1) {
         led.toggle();
         sched_dispatch();
-
-        print_bmp_data(&bmp390);
-
+        sched_wake(bmpTID);
         HAL_Delay(1000);
 
         /* USER CODE END WHILE */
