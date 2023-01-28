@@ -36,6 +36,7 @@
 #include "device/peripherals/W25Q/W25Q.h"
 //#include "device/peripherals/BMP390/BMP390.h"
 #include "device/peripherals/BMP390/BMP3902.h"
+#include "device/peripherals/ADXL375/ADXL375.h"
 
 
 
@@ -89,6 +90,7 @@ static void MX_SPI2_Init(void);
 
 /* USER CODE BEGIN PFP */
 static void print_bmp_data(BMP390 *bmp);
+static void print_adxl_data(ADXL375 *adxl);
 static BMP390 bmp390(nullptr, nullptr);
 
 /* USER CODE END PFP */
@@ -184,19 +186,22 @@ int main(void) {
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
     }
 
-    tid_t bmpTID = sched_start(&bmpTask);
-    if (-1 == bmpTID) {
-        printf("failed to start BMP sensor task\r\n");
-        return -1;
-    }
+    ADXL375 adxl375 = ADXL375(bmpI2C);
+
+    // tid_t bmpTID = sched_start(&bmpTask);
+    // if (-1 == bmpTID) {
+    //     printf("failed to start BMP sensor task\r\n");
+    //     return -1;
+    // }
 
     /* USER CODE END 2 */
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
         led.toggle();
-        sched_dispatch();
-        sched_wake(bmpTID);
+        // sched_dispatch();
+        // sched_wake(bmpTID);
+        print_adxl_data(&adxl375);
         HAL_Delay(1000);
 
         /* USER CODE END WHILE */
@@ -587,7 +592,47 @@ void print_bmp_data_it(BMP390 *bmp, HALUARTDevice *uart) {
     sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
     uart->write(uartBuffer2, strlen((char *) uartBuffer2));
     uart->write((uint8_t *) "------------------------\r\n", 26);
+}
 
+void print_adxl_data(ADXL375 *adxl ){
+    uint8_t uartBuffer[100];
+    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
+
+
+    int16_t xData = 0;
+    RetType ret = adxl->readX(&xData);
+    if(ret != RET_SUCCESS){
+        const char *adxlDataXError = "Failed to recieve X value.\r\n";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataXError, strlen(adxlDataXError), 100);
+    }
+    else{
+        sprintf((char *) uartBuffer, "X Value: %d\r\n", xData);
+        HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
+    }
+
+
+    int16_t yData = 0;
+    ret = adxl->readY(&yData);
+    if(ret != RET_SUCCESS){
+        const char *adxlDataYError = "Failed to recieve Y value.\r\n";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataYError, strlen(adxlDataYError), 100);
+    }
+    else{
+        sprintf((char *) uartBuffer, "Y Value: %d\r\n", yData);
+        HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
+    }
+
+
+    int16_t zData = 0;
+    ret = adxl->readZ(&zData);
+    if(ret != RET_SUCCESS){
+        const char *adxlDataZError = "Failed to recieve Z value.\r\n";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataZError, strlen(adxlDataZError), 100);
+    }
+    else{
+        sprintf((char *) uartBuffer, "Z Value: %d\r\n", zData);
+        HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
+    }
 }
 
 
