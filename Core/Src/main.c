@@ -608,7 +608,7 @@ void print_adxl_data(ADXL375 *adxl) {
     int16_t xData = 0;
     RetType ret = adxl->readX(&xData);
     if (ret != RET_SUCCESS) {
-        const char *adxlDataXError = "Failed to recieve X value.\r\n";
+        const char *adxlDataXError = "Failed to receive X value.\r\n";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataXError, strlen(adxlDataXError), 100);
     } else {
         sprintf((char *) uartBuffer, "X Value: %d\r\n", xData);
@@ -619,7 +619,7 @@ void print_adxl_data(ADXL375 *adxl) {
     int16_t yData = 0;
     ret = adxl->readY(&yData);
     if (ret != RET_SUCCESS) {
-        const char *adxlDataYError = "Failed to recieve Y value.\r\n";
+        const char *adxlDataYError = "Failed to receive Y value.\r\n";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataYError, strlen(adxlDataYError), 100);
     } else {
         sprintf((char *) uartBuffer, "Y Value: %d\r\n", yData);
@@ -630,7 +630,7 @@ void print_adxl_data(ADXL375 *adxl) {
     int16_t zData = 0;
     ret = adxl->readZ(&zData);
     if (ret != RET_SUCCESS) {
-        const char *adxlDataZError = "Failed to recieve Z value.\r\n";
+        const char *adxlDataZError = "Failed to receive Z value.\r\n";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataZError, strlen(adxlDataZError), 100);
     } else {
         sprintf((char *) uartBuffer, "Z Value: %d\r\n", zData);
