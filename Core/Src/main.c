@@ -31,7 +31,6 @@
 #include "device/platforms/stm32/HAL_TimerDevice.h"
 
 
-
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
 //#include "device/peripherals/BMP390/BMP390.h"
@@ -90,7 +89,9 @@ static void MX_SPI2_Init(void);
 
 /* USER CODE BEGIN PFP */
 static void print_bmp_data(BMP390 *bmp);
+
 static void print_adxl_data(ADXL375 *adxl);
+
 static BMP390 bmp390(nullptr, nullptr);
 
 /* USER CODE END PFP */
@@ -146,7 +147,7 @@ int main(void) {
     MX_SPI2_Init();
     MX_GPIO_Init();
     /* USER CODE BEGIN 2 */
-    if(!sched_init(&HAL_GetTick)) {
+    if (!sched_init(&HAL_GetTick)) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "failed to initialize scheduler\r\n", 36, 100);
         return -1;
     }
@@ -162,31 +163,36 @@ int main(void) {
     RetType gpioRet = gpioDevice.init();
     RetType ledRet = led.init();
 
-    HALSPIDevice spiDevice("W25Q SPI", &hspi1);
-    HALGPIODevice csPin("W25Q CS", GPIOA, GPIO_PIN_6);
-    HALGPIODevice clkPin("W25Q CLK", GPIOB, GPIO_PIN_13);
-    W25Q w25q(spiDevice, csPin, clkPin);
-    spiDevice.init();
-    csPin.init();
-    clkPin.init();
-    RetType w25qInit = w25q.init();
-    if (w25qInit != RET_SUCCESS) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "W25Q init failed\r\n", 18, 100);
-    }
+//    HALSPIDevice spiDevice("W25Q SPI", &hspi1);
+//    HALGPIODevice csPin("W25Q CS", GPIOA, GPIO_PIN_6);
+//    HALGPIODevice clkPin("W25Q CLK", GPIOB, GPIO_PIN_13);
+//    W25Q w25q(spiDevice, csPin, clkPin);
+//    spiDevice.init();
+//    csPin.init();
+//    clkPin.init();
+//    RetType w25qInit = w25q.init();
+//    if (w25qInit != RET_SUCCESS) {
+//        HAL_UART_Transmit(&huart2, (uint8_t *) "W25Q init failed\r\n", 18, 100);
+//    }
 
-    w25q.toggleWrite(WRITE_SET_ENABLE);
+//    w25q.toggleWrite(WRITE_SET_ENABLE);
 
     HALI2CDevice bmpI2C = HALI2CDevice("BMP390 I2C", &hi2c1);
     RetType bmpI2CRet = bmpI2C.init();
 
-    bmp390 = BMP390(&bmpI2C, &timer);
-    RetType bmpRet = bmp390.init();
-    if (bmpRet != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to init bmp390\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
+//    bmp390 = BMP390(&bmpI2C, &timer);
+//    RetType bmpRet = bmp390.init();
+//    if (bmpRet != RET_SUCCESS) {
+//        const char *bmpErrStr = "Failed to init bmp390\n\r";
+//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+//    }
 
     ADXL375 adxl375 = ADXL375(bmpI2C);
+    RetType adxlRet = adxl375.init();
+    if (adxlRet != RET_SUCCESS) {
+        const char *adxlErrStr = "Failed to init adxl375\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlErrStr, strlen(adxlErrStr), 100);
+    }
 
     // tid_t bmpTID = sched_start(&bmpTask);
     // if (-1 == bmpTID) {
@@ -513,7 +519,7 @@ int8_t bmp_write_it(uint8_t regAddr, const uint8_t *data, uint32_t len, void *in
     // TODO: Interrupt Mode <3
 
     HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&hi2c1, deviceAddr << 1, regAddr, I2C_MEMADD_SIZE_8BIT,
-                                                 (uint8_t *) data, len);
+                                                    (uint8_t *) data, len);
 
     HAL_Delay(25);
 
@@ -594,18 +600,17 @@ void print_bmp_data_it(BMP390 *bmp, HALUARTDevice *uart) {
     uart->write((uint8_t *) "------------------------\r\n", 26);
 }
 
-void print_adxl_data(ADXL375 *adxl ){
+void print_adxl_data(ADXL375 *adxl) {
     uint8_t uartBuffer[100];
     HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
 
 
     int16_t xData = 0;
     RetType ret = adxl->readX(&xData);
-    if(ret != RET_SUCCESS){
+    if (ret != RET_SUCCESS) {
         const char *adxlDataXError = "Failed to recieve X value.\r\n";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataXError, strlen(adxlDataXError), 100);
-    }
-    else{
+    } else {
         sprintf((char *) uartBuffer, "X Value: %d\r\n", xData);
         HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
     }
@@ -613,11 +618,10 @@ void print_adxl_data(ADXL375 *adxl ){
 
     int16_t yData = 0;
     ret = adxl->readY(&yData);
-    if(ret != RET_SUCCESS){
+    if (ret != RET_SUCCESS) {
         const char *adxlDataYError = "Failed to recieve Y value.\r\n";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataYError, strlen(adxlDataYError), 100);
-    }
-    else{
+    } else {
         sprintf((char *) uartBuffer, "Y Value: %d\r\n", yData);
         HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
     }
@@ -625,11 +629,10 @@ void print_adxl_data(ADXL375 *adxl ){
 
     int16_t zData = 0;
     ret = adxl->readZ(&zData);
-    if(ret != RET_SUCCESS){
+    if (ret != RET_SUCCESS) {
         const char *adxlDataZError = "Failed to recieve Z value.\r\n";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataZError, strlen(adxlDataZError), 100);
-    }
-    else{
+    } else {
         sprintf((char *) uartBuffer, "Z Value: %d\r\n", zData);
         HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
     }
