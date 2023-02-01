@@ -92,7 +92,8 @@ static void print_bmp_data(BMP390 *bmp);
 
 static void print_adxl_data(ADXL375 *adxl);
 
-static BMP390 bmp390(nullptr, nullptr);
+static BMP390 *bmp390;
+static ADXL375 *adxl375;
 
 /* USER CODE END PFP */
 
@@ -101,9 +102,9 @@ static BMP390 bmp390(nullptr, nullptr);
 RetType bmpTask() {
     RESUME();
 
-    RetType ret = CALL(bmp390.pullSensorData());
+    RetType ret = CALL(bmp390->pullSensorData());
     HAL_UART_Transmit(&huart2, (uint8_t *) "BMP Task Executing\r\n", 20, 100);
-    print_bmp_data(&bmp390);
+    print_bmp_data(bmp390);
 
     RESET();
     return ret;
@@ -173,13 +174,14 @@ int main(void) {
     RetType ledRet = led.init();
 
 
-    HALI2CDevice i2c("BMP390 I2C", &hi2c1);
+    HALI2CDevice i2c("HAL I2C", &hi2c1);
     RetType bmpI2CRet = i2c.init();
 
     // Initialize peripheral devices
-    bmp390 = BMP390(&i2c, &timer);
+    BMP390 bmp(&i2c, &timer);
+    bmp390 = &bmp;
     tid_t bmpTID = -1;
-    RetType bmpRet = bmp390.init();
+    RetType bmpRet = bmp.init();
     if (bmpRet == RET_ERROR) {
         const char *bmpErrStr = "Failed to init bmp390\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
@@ -190,9 +192,10 @@ int main(void) {
         }
     }
 
-    ADXL375 adxl375(i2c);
+    ADXL375 adxl(i2c);
+    adxl375 = &adxl;
     tid_t adxlTID = -1;
-    RetType adxlRet = adxl375.init();
+    RetType adxlRet = adxl.init();
     if (adxlRet == RET_ERROR) {
         const char *adxlErrStr = "Failed to init ADXL375\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlErrStr, strlen(adxlErrStr), 100);
