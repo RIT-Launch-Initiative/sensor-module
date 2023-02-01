@@ -113,10 +113,23 @@ RetType bmpTask() {
 
 RetType adxlTask() {
     RESUME();
-    RetType ret;
+    int16_t x;
+    int16_t y;
+    int16_t z;
+    while (1) {
+        RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
+        if (ret != RET_SUCCESS) {
+            HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
+            RESET();
+            return ret;
+        }
+        char buf[100];
+        sprintf(buf, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
+        HAL_UART_Transmit(&huart2, (uint8_t *) buf, strlen(buf), 100);
+    }
 
     RESET();
-    return ret;
+    return RET_ERROR;
 }
 
 
@@ -178,19 +191,19 @@ int main(void) {
     RetType bmpI2CRet = i2c.init();
 
     // Initialize peripheral devices
-    BMP390 bmp(&i2c, &timer);
-    bmp390 = &bmp;
-    tid_t bmpTID = -1;
-    RetType bmpRet = bmp.init();
-    if (bmpRet == RET_ERROR) {
-        const char *bmpErrStr = "Failed to init bmp390\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    } else {
-        tid_t bmpTID = sched_start(&bmpTask);
-        if (-1 == bmpTID) {
-            printf("failed to start BMP sensor task\r\n");
-        }
-    }
+//    BMP390 bmp(&i2c, &timer);
+//    bmp390 = &bmp;
+//    tid_t bmpTID = -1;
+//    RetType bmpRet = bmp.init();
+//    if (bmpRet == RET_ERROR) {
+//        const char *bmpErrStr = "Failed to init bmp390\n\r";
+//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+//    } else {
+//        tid_t bmpTID = sched_start(&bmpTask);
+//        if (-1 == bmpTID) {
+//            printf("failed to start BMP sensor task\r\n");
+//        }
+//    }
 
     ADXL375 adxl(i2c);
     adxl375 = &adxl;
@@ -210,8 +223,8 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        led.toggle();
-        HAL_Delay(1000);
+        sched_dispatch();
+        HAL_Delay(100);
         /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */
     }
