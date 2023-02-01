@@ -110,6 +110,15 @@ RetType bmpTask() {
 }
 
 
+RetType adxlTask() {
+    RESUME();
+    RetType ret;
+
+    RESET();
+    return ret;
+}
+
+
 
 /* USER CODE END 0 */
 
@@ -178,6 +187,19 @@ int main(void) {
         tid_t bmpTID = sched_start(&bmpTask);
         if (-1 == bmpTID) {
             printf("failed to start BMP sensor task\r\n");
+        }
+    }
+
+    ADXL375 adxl375(i2c);
+    tid_t adxlTID = -1;
+    RetType adxlRet = adxl375.init();
+    if (adxlRet == RET_ERROR) {
+        const char *adxlErrStr = "Failed to init ADXL375\n\r";
+        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlErrStr, strlen(adxlErrStr), 100);
+    } else {
+        tid_t adxlTID = sched_start(&adxlTask);
+        if (-1 == adxlTID) {
+            printf("failed to start ADXL sensor task\r\n");
         }
     }
 
