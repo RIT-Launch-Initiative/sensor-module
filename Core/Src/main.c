@@ -189,10 +189,12 @@ int main(void) {
 
     ADXL375 adxl375 = ADXL375(bmpI2C);
     RetType adxlRet = adxl375.init();
-    if (adxlRet != RET_SUCCESS) {
+    if (adxlRet == RET_ERROR) {
         const char *adxlErrStr = "Failed to init adxl375\n\r";
         HAL_UART_Transmit(&huart2, (const uint8_t *) adxlErrStr, strlen(adxlErrStr), 100);
     }
+
+
 
     // tid_t bmpTID = sched_start(&bmpTask);
     // if (-1 == bmpTID) {
@@ -207,7 +209,7 @@ int main(void) {
         led.toggle();
         // sched_dispatch();
         // sched_wake(bmpTID);
-        print_adxl_data(&adxl375);
+//        print_adxl_data(&adxl375);
         HAL_Delay(1000);
 
         /* USER CODE END WHILE */
