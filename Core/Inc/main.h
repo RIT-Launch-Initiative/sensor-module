@@ -53,14 +53,6 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void bmp_delay(uint32_t period, void *intf_ptr);
-int8_t bmp_write(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfPtr);
-int8_t bmp_read(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr);
-int8_t bmp_write_it(uint8_t regAddr, const uint8_t *data, uint32_t len, void *intfPtr);
-int8_t bmp_read_it(uint8_t regAddr, uint8_t *data, uint32_t len, void *intfPtr);
-uint32_t HAL_ID_READ();
-
-
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
