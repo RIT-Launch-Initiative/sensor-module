@@ -112,24 +112,22 @@ RetType bmpTask() {
 
 
 RetType adxlTask() {
-    RESUME();
     int16_t x;
     int16_t y;
     int16_t z;
-    while (1) {
-        RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
-        if (ret != RET_SUCCESS) {
-            HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
-            RESET();
-            return ret;
-        }
-        char buf[100];
-        sprintf(buf, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
-        HAL_UART_Transmit(&huart2, (uint8_t *) buf, strlen(buf), 100);
-    }
 
-    RESET();
-    return RET_ERROR;
+    RetType ret = adxl375->readXYZ(&x, &y, &z);
+    if (ret != RET_SUCCESS) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
+        return ret;
+    }
+    char buf[100];
+    size_t buffSize = sprintf(buf, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
+    HAL_UART_Transmit(&huart2, (uint8_t *) buf, buffSize, 100);
+
+    sched_sleep(sched_dispatched, 5);
+
+
 }
 
 
