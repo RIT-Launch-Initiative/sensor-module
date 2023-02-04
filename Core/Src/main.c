@@ -199,7 +199,7 @@ int main(void) {
 //    } else {
 //        tid_t bmpTID = sched_start(&bmpTask);
 //        if (-1 == bmpTID) {
-//            printf("failed to start BMP sensor task\r\n");
+//            prin  tf("failed to start BMP sensor task\r\n");
 //        }
 //    }
 
