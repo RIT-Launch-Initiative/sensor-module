@@ -101,6 +101,8 @@ RetType ledTask() {
     HAL_UART_Transmit(&huart2, (uint8_t *) "LED Task Executed\r\n", 20, 100);
     RetType ret = CALL(led->toggle());
 
+    sched_sleep(sched_dispatched, 2);
+
     RESET();
     return RET_SUCCESS;
 }
@@ -108,8 +110,8 @@ RetType ledTask() {
 RetType bmpTask() {
     RESUME();
 
-    RetType ret = CALL(bmp390->pullSensorData());
     HAL_UART_Transmit(&huart2, (uint8_t *) "BMP Task Executing\r\n", 20, 100);
+    RetType ret = CALL(bmp390->pullSensorData());
 
     RESET();
     return ret;
@@ -156,7 +158,7 @@ int main(void) {
     HALUARTDevice uart("UART", &huart2);
     RetType uartRet = uart.init();
 
-    char uartBuffer[50];
+    char uartBuffer[MAX_UART_BUFF_SIZE];
 
     if(!sched_init(&HAL_GetTick)) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
@@ -181,7 +183,7 @@ int main(void) {
         }
     }
 
-    HALI2CDevice i2c("BMP390 I2C", &hi2c1);
+    HALI2CDevice i2c("HAL I2C1", &hi2c1);
     RetType bmpI2CRet = i2c.init();
 
     // Initialize peripheral devices
@@ -190,15 +192,13 @@ int main(void) {
     tid_t bmpTID = -1;
     RetType bmpRet = bmp390->init();
     if (bmpRet == RET_ERROR) {
-            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
-            uart.write((const uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
+        uart.write((const uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
     } else {
         bmpTID = sched_start(&bmpTask);
         if (-1 == bmpTID) {
             snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
         }
-
-        uart.write((const uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
     }
 
     /* USER CODE END 2 */
