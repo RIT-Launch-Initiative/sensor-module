@@ -162,7 +162,7 @@ int main(void) {
 
     if(!sched_init(&HAL_GetTick)) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
-        uart.write((const uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        uart.write((uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
         return -1;
     }
 
@@ -174,19 +174,19 @@ int main(void) {
     tid_t ledTID = -1;
     if (led->init() == RET_ERROR) {
        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED\n\r");
-       uart.write((const uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+       uart.write((uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
     } else {
         ledTID = sched_start(&ledTask);
         if (-1 == ledTID) {
             snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
-            uart.write((const uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+            uart.write((uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
         }
     }
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init I2C1 Device. Exiting.\n\r");
-        uart.write((const uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        uart.write((uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
         return -1;
     }
 
@@ -197,7 +197,7 @@ int main(void) {
     RetType bmpRet = bmp390->init();
     if (bmpRet == RET_ERROR) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
-        uart.write((const uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        uart.write((uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
     } else {
         bmpTID = sched_start(&bmpTask);
         if (-1 == bmpTID) {
@@ -212,7 +212,7 @@ int main(void) {
 
     while (1) {
         const char *whileString = "Task Dispatched\n\r";
-        uart.write((const uint8_t*) whileString, 17);
+        uart.write((uint8_t*) whileString, 17);
         sched_dispatch();
 
         HAL_Delay(500);
