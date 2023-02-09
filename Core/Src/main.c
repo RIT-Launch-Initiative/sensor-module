@@ -183,23 +183,28 @@ int main(void) {
         }
     }
 
-    HALI2CDevice i2c("HAL I2C1", &hi2c1);
-    RetType bmpI2CRet = i2c.init();
+    static HALI2CDevice i2c("HAL I2C1", &hi2c1);
+    if (i2c.init() != RET_SUCCESS) {
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init I2C1 Device. Exiting.\n\r");
+        uart.write((const uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        return -1;
+    }
 
-    // Initialize peripheral devices
-    BMP390 bmp(i2c);
+    // Initialize peripheral devices under I2C1 Bus
+    static BMP390 bmp(i2c);
     bmp390 = &bmp;
     tid_t bmpTID = -1;
     RetType bmpRet = bmp390->init();
     if (bmpRet == RET_ERROR) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
-        uart.write((const uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        uart.write((const uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
     } else {
         bmpTID = sched_start(&bmpTask);
         if (-1 == bmpTID) {
             snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
         }
     }
+
 
     /* USER CODE END 2 */
     /* Infinite loop */
