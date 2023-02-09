@@ -90,6 +90,7 @@ static void MX_SPI2_Init(void);
 static void print_bmp_data(BMP390 *bmp);
 static BMP390 *bmp390 = nullptr;
 static LED *led = nullptr;
+static HALUARTDevice *uartDev = nullptr;
 
 /* USER CODE END PFP */
 
@@ -98,7 +99,7 @@ static LED *led = nullptr;
 RetType ledTask() {
     RESUME();
 
-    HAL_UART_Transmit(&huart2, (uint8_t *) "LED Task Executed\r\n", 20, 100);
+    uartDev->write((uint8_t *) "LED Task Executed\r\n", 20);
     RetType ret = CALL(led->toggle());
 
     sched_sleep(sched_dispatched, 2);
@@ -110,7 +111,7 @@ RetType ledTask() {
 RetType bmpTask() {
     RESUME();
 
-    HAL_UART_Transmit(&huart2, (uint8_t *) "BMP Task Executing\r\n", 20, 100);
+    uartDev->write((uint8_t *) "BMP Task Executed\r\n", 20);
     RetType ret = CALL(bmp390->pullSensorData());
 
     RESET();
@@ -157,6 +158,7 @@ int main(void) {
     /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
     RetType uartRet = uart.init();
+    uartDev = &uart;
 
     char uartBuffer[MAX_UART_BUFF_SIZE];
 
