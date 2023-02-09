@@ -99,7 +99,7 @@ static HALUARTDevice *uartDev = nullptr;
 RetType ledTask() {
     RESUME();
 
-    uartDev->write((uint8_t *) "LED Task Executed\r\n", 20);
+    HAL_UART_Transmit_IT(&huart2, (uint8_t *) "BMP Task Executed\r\n", 20);
     RetType ret = CALL(led->toggle());
 
     sched_sleep(sched_dispatched, 2);
@@ -111,7 +111,7 @@ RetType ledTask() {
 RetType bmpTask() {
     RESUME();
 
-    uartDev->write((uint8_t *) "BMP Task Executed\r\n", 20);
+    HAL_UART_Transmit_IT(&huart2, (uint8_t *) "BMP Task Executed\r\n", 20);
     RetType ret = CALL(bmp390->pullSensorData());
 
     RESET();
@@ -164,7 +164,7 @@ int main(void) {
 
     if(!sched_init(&HAL_GetTick)) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
-        uart.write((uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
         return -1;
     }
 
@@ -176,19 +176,22 @@ int main(void) {
     tid_t ledTID = -1;
     if (led->init() == RET_ERROR) {
        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED\n\r");
-       uart.write((uint8_t*) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+       HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+
     } else {
         ledTID = sched_start(&ledTask);
         if (-1 == ledTID) {
             snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
-            uart.write((uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+
         }
     }
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init I2C1 Device. Exiting.\n\r");
-        uart.write((uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+
         return -1;
     }
 
@@ -199,11 +202,12 @@ int main(void) {
     RetType bmpRet = bmp390->init();
     if (bmpRet == RET_ERROR) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
-        uart.write((uint8_t *) uartBuffer, strnlen(uartBuffer, MAX_UART_BUFF_SIZE));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
     } else {
         bmpTID = sched_start(&bmpTask);
         if (-1 == bmpTID) {
             snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
+            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
         }
     }
 
@@ -214,9 +218,8 @@ int main(void) {
 
     while (1) {
         const char *whileString = "Task Dispatched\n\r";
-        uart.write((uint8_t*) whileString, 17);
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) whileString, strlen(whileString));
         sched_dispatch();
-
         HAL_Delay(500);
         /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */
