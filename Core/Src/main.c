@@ -57,8 +57,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-I2C_HandleTypeDef hi2c2;
-I2C_HandleTypeDef hi2c3;
 
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
@@ -71,23 +69,12 @@ UART_HandleTypeDef huart2;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-
 static void MX_GPIO_Init(void);
-
 static void MX_SPI1_Init(void);
-
 static void MX_I2C1_Init(void);
-
-static void MX_I2C2_Init(void);
-
-static void MX_I2C3_Init(void);
-
 static void MX_USART2_UART_Init(void);
-
 static void MX_SPI2_Init(void);
-
 /* USER CODE BEGIN PFP */
-static void print_bmp_data(BMP390 *bmp);
 static BMP390 *bmp390 = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
@@ -96,22 +83,38 @@ static HALUARTDevice *uartDev = nullptr;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+// TODO: Figure out the initialization task
+RetType ledInitTask() {
+    RESUME();
+
+    uartDev->write((uint8_t *) "LED Initializing\r\n", 18);
+    RetType ret = CALL(led->init());
+    RESET();
+    return RET_ERROR;
+}
 RetType ledTask() {
     RESUME();
 
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *) "BMP Task Executed\r\n", 20);
+    uartDev->write((uint8_t *) "LED Task Executed\r\n", 20);
     RetType ret = CALL(led->toggle());
-
-    sched_sleep(sched_dispatched, 2);
+    sched_sleep(sched_dispatched, 500);
 
     RESET();
     return RET_SUCCESS;
 }
 
+RetType bmpInitTask() {
+    RESUME();
+    RetType ret = CALL(bmp390->init());
+    RESET();
+    return ret;
+}
+
 RetType bmpTask() {
     RESUME();
 
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *) "BMP Task Executed\r\n", 20);
+    uartDev->write((uint8_t *) "BMP Task Executed\r\n", 20);
     RetType ret = CALL(bmp390->pullSensorData());
 
     RESET();
@@ -127,35 +130,33 @@ RetType bmpTask() {
   * @retval int
   */
 int main(void) {
-    /* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
 
-    /* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-    /* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-    /* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-    /* USER CODE END Init */
+  /* USER CODE END Init */
 
-    /* Configure the system clock */
-    SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-    /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-    /* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-    /* Initialize all configured peripherals */
-    MX_I2C1_Init();
-    MX_I2C2_Init();
-    MX_I2C3_Init();
-    MX_USART2_UART_Init();
-    MX_SPI1_Init();
-    MX_SPI2_Init();
-    MX_GPIO_Init();
-    /* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_SPI1_Init();
+  MX_I2C1_Init();
+  MX_USART2_UART_Init();
+  MX_SPI2_Init();
+  /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
     RetType uartRet = uart.init();
     uartDev = &uart;
@@ -174,18 +175,25 @@ int main(void) {
     LED localLED(gpioDevice);
     led = &localLED;
     tid_t ledTID = -1;
-    if (led->init() == RET_ERROR) {
-       snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED\n\r");
-       HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+    sched_start(ledInitTask);
+    ledTID = sched_start(&ledTask);
+    if (-1 == ledTID) {
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
 
-    } else {
-        ledTID = sched_start(&ledTask);
-        if (-1 == ledTID) {
-            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
-            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-
-        }
     }
+//    if (led->init() == RET_ERROR) {
+//       snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED\n\r");
+//       HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+//
+//    } else {
+//        ledTID = sched_start(&ledTask);
+//        if (-1 == ledTID) {
+//            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
+//            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+//
+//        }
+//    }
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
@@ -196,35 +204,44 @@ int main(void) {
     }
 
     // Initialize peripheral devices under I2C1 Bus
-    static BMP390 bmp(i2c);
+    BMP390 bmp(i2c);
     bmp390 = &bmp;
     tid_t bmpTID = -1;
-    RetType bmpRet = bmp390->init();
-    if (bmpRet == RET_ERROR) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
+    sched_start(bmpInitTask);
+    bmpTID = sched_start(&bmpTask);
+    if (-1 == bmpTID) {
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-    } else {
-        bmpTID = sched_start(&bmpTask);
-        if (-1 == bmpTID) {
-            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
-            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-        }
     }
 
+    // TODO: Figure out how to init the driver properly before trying to get sensor readings now
+//    if (bmpRet == RET_ERROR) {
+//        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
+//        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+//    } else {
+//        bmpTID = sched_start(&bmpTask);
+//        if (-1 == bmpTID) {
+//            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
+//            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+//        }
+//    }
 
-    /* USER CODE END 2 */
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
 
     while (1) {
         const char *whileString = "Task Dispatched\n\r";
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) whileString, strlen(whileString));
+        HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
         sched_dispatch();
         HAL_Delay(500);
-        /* USER CODE END WHILE */
-        /* USER CODE BEGIN 3 */
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
     }
-    /* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
@@ -294,70 +311,6 @@ static void MX_I2C1_Init(void) {
     /* USER CODE BEGIN I2C1_Init 2 */
 
     /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief I2C2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C2_Init(void) {
-
-    /* USER CODE BEGIN I2C2_Init 0 */
-
-    /* USER CODE END I2C2_Init 0 */
-
-    /* USER CODE BEGIN I2C2_Init 1 */
-
-    /* USER CODE END I2C2_Init 1 */
-    hi2c2.Instance = I2C2;
-    hi2c2.Init.ClockSpeed = 100000;
-    hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-    hi2c2.Init.OwnAddress1 = 0;
-    hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-    hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c2.Init.OwnAddress2 = 0;
-    hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-    if (HAL_I2C_Init(&hi2c2) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN I2C2_Init 2 */
-
-    /* USER CODE END I2C2_Init 2 */
-
-}
-
-/**
-  * @brief I2C3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C3_Init(void) {
-
-    /* USER CODE BEGIN I2C3_Init 0 */
-
-    /* USER CODE END I2C3_Init 0 */
-
-    /* USER CODE BEGIN I2C3_Init 1 */
-
-    /* USER CODE END I2C3_Init 1 */
-    hi2c3.Instance = I2C3;
-    hi2c3.Init.ClockSpeed = 100000;
-    hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
-    hi2c3.Init.OwnAddress1 = 0;
-    hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-    hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c3.Init.OwnAddress2 = 0;
-    hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-    if (HAL_I2C_Init(&hi2c3) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN I2C3_Init 2 */
-
-    /* USER CODE END I2C3_Init 2 */
 
 }
 
