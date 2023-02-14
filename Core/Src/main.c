@@ -28,7 +28,6 @@
 #include "device/platforms/stm32/HAL_UARTDevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
-#include "device/platforms/stm32/HAL_TimerDevice.h"
 
 
 
