@@ -87,11 +87,14 @@ static HALUARTDevice *uartDev = nullptr;
 RetType ledInitTask() {
     RESUME();
 
-    uartDev->write((uint8_t *) "LED Initializing\r\n", 18);
+    CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
     RetType ret = CALL(led->init());
+    CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
+
     RESET();
     return RET_ERROR;
 }
+
 RetType ledTask() {
     RESUME();
 
@@ -179,20 +182,7 @@ int main(void) {
     if (-1 == ledTID) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-
     }
-//    if (led->init() == RET_ERROR) {
-//       snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED\n\r");
-//       HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-//
-//    } else {
-//        ledTID = sched_start(&ledTask);
-//        if (-1 == ledTID) {
-//            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
-//            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-//
-//        }
-//    }
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
