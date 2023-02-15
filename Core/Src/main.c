@@ -98,9 +98,7 @@ RetType ledInitTask() {
 RetType ledTask() {
     RESUME();
 
-    uartDev->write((uint8_t *) "LED Task Executed\r\n", 20);
     RetType ret = CALL(led->toggle());
-    sched_sleep(sched_dispatched, 500);
 
     RESET();
     return RET_SUCCESS;
@@ -108,15 +106,23 @@ RetType ledTask() {
 
 RetType bmpInitTask() {
     RESUME();
+
+    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
     RetType ret = CALL(bmp390->init());
+    if (ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "BMP Error Init\r\n", 18));
+        return RET_ERROR;
+    }
+
+    CALL(uartDev->write((uint8_t *) "BMP Success Init", 18));
+
     RESET();
-    return ret;
+    return RET_ERROR;
 }
 
 RetType bmpTask() {
     RESUME();
 
-    uartDev->write((uint8_t *) "BMP Task Executed\r\n", 20);
     RetType ret = CALL(bmp390->pullSensorData());
 
     RESET();
