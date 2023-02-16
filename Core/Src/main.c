@@ -77,24 +77,12 @@ static void MX_SPI2_Init(void);
 static BMP390 *bmp390 = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
+static HALI2CDevice *i2cDev = nullptr;
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-// TODO: Figure out the initialization task
-RetType ledInitTask() {
-    RESUME();
-
-    CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
-    RetType ret = CALL(led->init());
-    CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
-
-    RESET();
-    return RET_ERROR;
-}
-
 RetType ledTask() {
     RESUME();
 
@@ -104,22 +92,6 @@ RetType ledTask() {
     return RET_SUCCESS;
 }
 
-RetType bmpInitTask() {
-    RESUME();
-
-    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
-    RetType ret = CALL(bmp390->init());
-    if (ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "BMP Error Init\r\n", 18));
-        return RET_ERROR;
-    }
-
-    CALL(uartDev->write((uint8_t *) "BMP Success Init", 18));
-
-    RESET();
-    return RET_ERROR;
-}
-
 RetType bmpTask() {
     RESUME();
 
@@ -127,6 +99,49 @@ RetType bmpTask() {
 
     RESET();
     return ret;
+}
+
+// TODO: Figure out the initialization task
+RetType sensorInitTask() {
+    RESUME();
+    char uartBuffer[50] = {};
+
+    // TODO: LED is not a sensor but here for testing purposes
+    CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
+    RetType ret = CALL(led->init());
+    tid_t ledTID = -1;
+    if (ret != RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
+
+        ledTID = sched_start(&ledTask);
+        if (-1 == ledTID) {
+            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
+            CALL(uartDev->write((uint8_t *) uartBuffer, strlen(uartBuffer)));
+        }
+    }
+
+
+    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
+    ret = CALL(bmp390->init());
+    if (ret != RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "BMP Success Init", 18));
+
+        BMP390 bmp(*i2cDev);
+        bmp390 = &bmp;
+
+        tid_t bmpTID = -1;
+        bmpTID = sched_start(&bmpTask);
+        if (-1 == bmpTID) {
+            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
+            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "BMP Error Init\r\n", 18));
+    }
+
+
+    RESET();
+    return RET_ERROR;
 }
 
 
@@ -182,13 +197,6 @@ int main(void) {
     RetType gpioRet = gpioDevice.init();
     LED localLED(gpioDevice);
     led = &localLED;
-    tid_t ledTID = -1;
-    sched_start(ledInitTask);
-    ledTID = sched_start(&ledTask);
-    if (-1 == ledTID) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-    }
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
@@ -198,29 +206,8 @@ int main(void) {
         return -1;
     }
 
-    // Initialize peripheral devices under I2C1 Bus
-    BMP390 bmp(i2c);
-    bmp390 = &bmp;
-    tid_t bmpTID = -1;
-    sched_start(bmpInitTask);
-    bmpTID = sched_start(&bmpTask);
-    if (-1 == bmpTID) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-    }
-
-    // TODO: Figure out how to init the driver properly before trying to get sensor readings now
-//    if (bmpRet == RET_ERROR) {
-//        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390\n\r");
-//        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-//    } else {
-//        bmpTID = sched_start(&bmpTask);
-//        if (-1 == bmpTID) {
-//            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init BMP390 task\n\r");
-//            HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
-//        }
-//    }
-
+    i2cDev = &i2c;
+    sched_start(sensorInitTask);
 
   /* USER CODE END 2 */
 
