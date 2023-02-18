@@ -125,6 +125,7 @@ RetType sensorInitTask() {
     bmp390 = &bmp;
     tid_t bmp390TID = -1;
     RetType bmp390Ret = CALL(bmp390->init());
+
     if (bmp390Ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
     } else {
