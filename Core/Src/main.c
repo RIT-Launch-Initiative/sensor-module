@@ -105,8 +105,6 @@ RetType bmpTask() {
 RetType sensorInitTask() {
     RESUME();
 
-    char uartBuffer[50] = {};
-    size_t uartBufferSize = 0;
 
     // TODO: LED is not a sensor but here for testing purposes
     CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
@@ -117,32 +115,30 @@ RetType sensorInitTask() {
 
         ledTID = sched_start(&ledTask);
         if (-1 == ledTID) {
-            snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init LED task\n\r");
-            CALL(uartDev->write((uint8_t *) uartBuffer, strlen(uartBuffer)));
+            CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
         }
     }
 
-    uartBufferSize = snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "BMP Initializing\r\n");
-    CALL(uartDev->write((uint8_t *) uartBuffer, uartBufferSize));
+    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
 
     static BMP390 bmp(*i2cDev);
     bmp390 = &bmp;
     tid_t bmp390TID = -1;
     RetType bmp390Ret = CALL(bmp390->init());
     if (bmp390Ret == RET_ERROR) {
-        uartBufferSize = snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "BMP Failed to Initialize\r\n");
-        CALL(uartDev->write((uint8_t *) uartBuffer, uartBufferSize));
-
+        CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
     } else {
         bmp390TID = sched_start(bmpTask);
 
-
         if (-1 == bmp390TID) {
-            uartBufferSize = snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "BMP Task Startup Failed\n\r");
-            CALL(uartDev->write((uint8_t *) uartBuffer, uartBufferSize));
+            CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
 
+        } else {
+            CALL(uartDev->write((uint8_t *) "BMP Task Running\r\n", 18));
         }
     }
+
+
 
     RESET();
     return RET_ERROR;
