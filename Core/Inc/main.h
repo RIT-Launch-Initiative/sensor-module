@@ -59,6 +59,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
+#define MAX_UART_BUFF_SIZE 50
 
 /* USER CODE END Private defines */
 

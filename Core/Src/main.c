@@ -28,12 +28,10 @@
 #include "device/platforms/stm32/HAL_UARTDevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
-#include "device/platforms/stm32/HAL_TimerDevice.h"
 
 
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
-//#include "device/peripherals/BMP390/BMP390.h"
 #include "device/peripherals/BMP390/BMP3902.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 
@@ -58,8 +56,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-I2C_HandleTypeDef hi2c2;
-I2C_HandleTypeDef hi2c3;
 
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
@@ -72,42 +68,81 @@ UART_HandleTypeDef huart2;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-
 static void MX_GPIO_Init(void);
-
 static void MX_SPI1_Init(void);
-
 static void MX_I2C1_Init(void);
-
-static void MX_I2C2_Init(void);
-
-static void MX_I2C3_Init(void);
-
 static void MX_USART2_UART_Init(void);
-
 static void MX_SPI2_Init(void);
-
 /* USER CODE BEGIN PFP */
-static void print_bmp_data(BMP390 *bmp);
-
-static void print_adxl_data(ADXL375 *adxl);
-
-static BMP390 *bmp390;
-static ADXL375 *adxl375;
+static BMP390 *bmp390 = nullptr;
+static ADXL375 *adxl375 = nullptr;
+static LED *led = nullptr;
+static HALUARTDevice *uartDev = nullptr;
+static HALI2CDevice *i2cDev = nullptr;
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+RetType ledTask() {
+    RESUME();
+
+    RetType ret = CALL(led->toggle());
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 RetType bmpTask() {
     RESUME();
 
     RetType ret = CALL(bmp390->pullSensorData());
-    HAL_UART_Transmit(&huart2, (uint8_t *) "BMP Task Executing\r\n", 20, 100);
-    print_bmp_data(bmp390);
 
     RESET();
     return ret;
+}
+
+// TODO: Figure out the initialization task
+RetType sensorInitTask() {
+    RESUME();
+
+
+    // TODO: LED is not a sensor but here for testing purposes
+    CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
+    RetType ret = CALL(led->init());
+    tid_t ledTID = -1;
+    if (ret != RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
+
+        ledTID = sched_start(&ledTask);
+        if (-1 == ledTID) {
+            CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
+        }
+    }
+
+    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
+
+    static BMP390 bmp(*i2cDev);
+    bmp390 = &bmp;
+    tid_t bmp390TID = -1;
+    RetType bmp390Ret = CALL(bmp390->init());
+    if (bmp390Ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
+    } else {
+        bmp390TID = sched_start(bmpTask);
+
+        if (-1 == bmp390TID) {
+            CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
+
+        } else {
+            CALL(uartDev->write((uint8_t *) "BMP Task Running\r\n", 18));
+        }
+    }
+
+
+
+    RESET();
+    return RET_ERROR;
 }
 
 
@@ -139,94 +174,77 @@ RetType adxlTask() {
   * @retval int
   */
 int main(void) {
-    /* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
 
-    /* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-    /* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-    /* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-    /* USER CODE END Init */
+  /* USER CODE END Init */
 
-    /* Configure the system clock */
-    SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-    /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-    /* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-    /* Initialize all configured peripherals */
-    MX_I2C1_Init();
-    MX_I2C2_Init();
-    MX_I2C3_Init();
-    MX_USART2_UART_Init();
-    MX_SPI1_Init();
-    MX_SPI2_Init();
-    MX_GPIO_Init();
-    /* USER CODE BEGIN 2 */
-    if (!sched_init(&HAL_GetTick)) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "failed to initialize scheduler\r\n", 36, 100);
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_SPI1_Init();
+  MX_I2C1_Init();
+  MX_USART2_UART_Init();
+  MX_SPI2_Init();
+  /* USER CODE BEGIN 2 */
+    HALUARTDevice uart("UART", &huart2);
+    RetType uartRet = uart.init();
+    uartDev = &uart;
+
+    char uartBuffer[MAX_UART_BUFF_SIZE];
+
+    if(!sched_init(&HAL_GetTick)) {
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
         return -1;
     }
 
     // Initialize peripherals
-    HALTimerDevice timer = HALTimerDevice();
-
-    HALUARTDevice uart("UART", &huart2);
-    RetType uartRet = uart.init();
-
     HALGPIODevice gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
-    LED led(gpioDevice);
     RetType gpioRet = gpioDevice.init();
-    RetType ledRet = led.init();
+    LED localLED(gpioDevice);
+    led = &localLED;
 
+    static HALI2CDevice i2c("HAL I2C1", &hi2c1);
+    if (i2c.init() != RET_SUCCESS) {
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init I2C1 Device. Exiting.\n\r");
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
 
-    HALI2CDevice i2c("HAL I2C", &hi2c1);
-    RetType bmpI2CRet = i2c.init();
-
-    // Initialize peripheral devices
-//    BMP390 bmp(&i2c, &timer);
-//    bmp390 = &bmp;
-//    tid_t bmpTID = -1;
-//    RetType bmpRet = bmp.init();
-//    if (bmpRet == RET_ERROR) {
-//        const char *bmpErrStr = "Failed to init bmp390\n\r";
-//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-//    } else {
-//        tid_t bmpTID = sched_start(&bmpTask);
-//        if (-1 == bmpTID) {
-//            prin  tf("failed to start BMP sensor task\r\n");
-//        }
-//    }
-
-    ADXL375 adxl(i2c);
-    adxl375 = &adxl;
-    tid_t adxlTID = -1;
-    RetType adxlRet = adxl.init();
-    if (adxlRet == RET_ERROR) {
-        const char *adxlErrStr = "Failed to init ADXL375\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlErrStr, strlen(adxlErrStr), 100);
-    } else {
-        tid_t adxlTID = sched_start(&adxlTask);
-        if (-1 == adxlTID) {
-            printf("failed to start ADXL sensor task\r\n");
-        }
+        return -1;
     }
 
-    /* USER CODE END 2 */
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
+    i2cDev = &i2c;
+    sched_start(sensorInitTask);
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+
     while (1) {
+        const char *whileString = "Task Dispatched\n\r";
+        HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
         sched_dispatch();
-        HAL_Delay(100);
-        /* USER CODE END WHILE */
-        /* USER CODE BEGIN 3 */
+        HAL_Delay(500);
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
     }
-    /* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
@@ -296,70 +314,6 @@ static void MX_I2C1_Init(void) {
     /* USER CODE BEGIN I2C1_Init 2 */
 
     /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief I2C2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C2_Init(void) {
-
-    /* USER CODE BEGIN I2C2_Init 0 */
-
-    /* USER CODE END I2C2_Init 0 */
-
-    /* USER CODE BEGIN I2C2_Init 1 */
-
-    /* USER CODE END I2C2_Init 1 */
-    hi2c2.Instance = I2C2;
-    hi2c2.Init.ClockSpeed = 100000;
-    hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-    hi2c2.Init.OwnAddress1 = 0;
-    hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-    hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c2.Init.OwnAddress2 = 0;
-    hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-    if (HAL_I2C_Init(&hi2c2) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN I2C2_Init 2 */
-
-    /* USER CODE END I2C2_Init 2 */
-
-}
-
-/**
-  * @brief I2C3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C3_Init(void) {
-
-    /* USER CODE BEGIN I2C3_Init 0 */
-
-    /* USER CODE END I2C3_Init 0 */
-
-    /* USER CODE BEGIN I2C3_Init 1 */
-
-    /* USER CODE END I2C3_Init 1 */
-    hi2c3.Instance = I2C3;
-    hi2c3.Init.ClockSpeed = 100000;
-    hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
-    hi2c3.Init.OwnAddress1 = 0;
-    hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-    hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c3.Init.OwnAddress2 = 0;
-    hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-    if (HAL_I2C_Init(&hi2c3) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN I2C3_Init 2 */
-
-    /* USER CODE END I2C3_Init 2 */
 
 }
 
@@ -502,77 +456,37 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-
-void print_bmp_data(BMP390 *bmp) {
-    RetType bmpRetAPI = RET_SUCCESS;
-    bmp3_status bmpStatus = {};
-    bmp3_data bmpData = {};
-    uint8_t uartBuffer2[100];
-
-    bmpData = bmp->getSensorData();
-    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
-    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    bmpRetAPI = bmp->getStatus(&bmpStatus);
-    if (bmpRetAPI != RET_SUCCESS) {
-        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-    }
-
-    HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
-    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
-    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-
-    HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
-}
-
-void print_adxl_data(ADXL375 *adxl) {
-    uint8_t uartBuffer[100];
-    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
-
-
-    int16_t xData = 0;
-    RetType ret = adxl->readX(&xData);
-    if (ret != RET_SUCCESS) {
-        const char *adxlDataXError = "Failed to receive X value.\r\n";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataXError, strlen(adxlDataXError), 100);
-    } else {
-        sprintf((char *) uartBuffer, "X Value: %d\r\n", xData);
-        HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
-    }
-
-
-    int16_t yData = 0;
-    ret = adxl->readY(&yData);
-    if (ret != RET_SUCCESS) {
-        const char *adxlDataYError = "Failed to receive Y value.\r\n";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataYError, strlen(adxlDataYError), 100);
-    } else {
-        sprintf((char *) uartBuffer, "Y Value: %d\r\n", yData);
-        HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
-    }
-
-
-    int16_t zData = 0;
-    ret = adxl->readZ(&zData);
-    if (ret != RET_SUCCESS) {
-        const char *adxlDataZError = "Failed to receive Z value.\r\n";
-        HAL_UART_Transmit(&huart2, (const uint8_t *) adxlDataZError, strlen(adxlDataZError), 100);
-    } else {
-        sprintf((char *) uartBuffer, "Z Value: %d\r\n", zData);
-        HAL_UART_Transmit(&huart2, uartBuffer, strlen((char *) uartBuffer), 100);
-    }
-}
-
+//void print_bmp_data(BMP390 *bmp) {
+//    RetType bmpRetAPI = RET_SUCCESS;
+//    bmp3_status bmpStatus = {};
+//    bmp3_data bmpData = {};
+//    uint8_t uartBuffer2[100];
+//
+//    bmpData = bmp->getSensorData();
+//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
+//    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
+//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+//    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
+//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+//
+//    bmpRetAPI = bmp->getStatus(&bmpStatus);
+//    if (bmpRetAPI != RET_SUCCESS) {
+//        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
+//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
+//    }
+//
+//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
+//    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
+//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+//
+//    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
+//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+//
+//    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
+//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
+//
+//    HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
+//}
 /* USER CODE END 4 */
 
 /**
