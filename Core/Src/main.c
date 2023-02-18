@@ -102,10 +102,27 @@ RetType bmpTask() {
     return ret;
 }
 
+RetType adxlTask() {
+    int16_t x;
+    int16_t y;
+    int16_t z;
+
+    RetType ret = adxl375->readXYZ(&x, &y, &z);
+    if (ret != RET_SUCCESS) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
+        return ret;
+    }
+    char buf[100];
+    size_t buffSize = sprintf(buf, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
+    HAL_UART_Transmit(&huart2, (uint8_t *) buf, buffSize, 100);
+
+    sched_sleep(sched_dispatched, 5); 
+    return ret;  
+}
+
 // TODO: Figure out the initialization task
 RetType sensorInitTask() {
     RESUME();
-
 
     // TODO: LED is not a sensor but here for testing purposes
     CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
@@ -139,30 +156,26 @@ RetType sensorInitTask() {
         }
     }
 
+    CALL(uartDev->write((uint8_t *) "ADXL Initializing\r\n", 18));
 
+    static ADXL375 adxl(*i2cDev);
+    adxl375 = &adxl;
+    tid_t adxl375TID = -1;
+    RetType adxl375Ret = CALL(adxl375->init());
+    if (adxl375Ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "ADXL Failed to Initialize\r\n", 26));
+    } else {
+        adxl375TID = sched_start(adxlTask);
+
+        if (-1 == adxl375TID) {
+            CALL(uartDev->write((uint8_t *) "ADXL Task Startup Failed\n\r", 25));
+        } else {
+            CALL(uartDev->write((uint8_t *) "ADXL Task Running\r\n", 18));
+        }
+    }
 
     RESET();
     return RET_ERROR;
-}
-
-
-RetType adxlTask() {
-    int16_t x;
-    int16_t y;
-    int16_t z;
-
-    RetType ret = adxl375->readXYZ(&x, &y, &z);
-    if (ret != RET_SUCCESS) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
-        return ret;
-    }
-    char buf[100];
-    size_t buffSize = sprintf(buf, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
-    HAL_UART_Transmit(&huart2, (uint8_t *) buf, buffSize, 100);
-
-    sched_sleep(sched_dispatched, 5);
-
-
 }
 
 
