@@ -137,24 +137,24 @@ RetType sensorInitTask() {
         }
     }
 
-    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
+//    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
 
-    static BMP390 bmp(*i2cDev);
-    bmp390 = &bmp;
-    tid_t bmp390TID = -1;
-    RetType bmp390Ret = CALL(bmp390->init());
-    if (bmp390Ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
-    } else {
-        bmp390TID = sched_start(bmpTask);
-
-        if (-1 == bmp390TID) {
-            CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
-
-        } else {
-            CALL(uartDev->write((uint8_t *) "BMP Task Running\r\n", 18));
-        }
-    }
+//    static BMP390 bmp(*i2cDev);
+//    bmp390 = &bmp;
+//    tid_t bmp390TID = -1;
+//    RetType bmp390Ret = CALL(bmp390->init());
+//    if (bmp390Ret == RET_ERROR) {
+//        CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
+//    } else {
+//        bmp390TID = sched_start(bmpTask);
+//
+//        if (-1 == bmp390TID) {
+//            CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
+//
+//        } else {
+//            CALL(uartDev->write((uint8_t *) "BMP Task Running\r\n", 18));
+//        }
+//    }
 
     CALL(uartDev->write((uint8_t *) "ADXL Initializing\r\n", 18));
 
@@ -163,14 +163,14 @@ RetType sensorInitTask() {
     tid_t adxl375TID = -1;
     RetType adxl375Ret = CALL(adxl375->init());
     if (adxl375Ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "ADXL Failed to Initialize\r\n", 26));
+        CALL(uartDev->write((uint8_t *) "ADXL Failed to Initialize\r\n", 27));
     } else {
         adxl375TID = sched_start(adxlTask);
 
         if (-1 == adxl375TID) {
-            CALL(uartDev->write((uint8_t *) "ADXL Task Startup Failed\n\r", 25));
+            CALL(uartDev->write((uint8_t *) "ADXL Task Startup Failed\n\r", 26));
         } else {
-            CALL(uartDev->write((uint8_t *) "ADXL Task Running\r\n", 18));
+            CALL(uartDev->write((uint8_t *) "ADXL Task Running\r\n", 19));
         }
     }
 
@@ -221,7 +221,7 @@ int main(void) {
     char uartBuffer[MAX_UART_BUFF_SIZE];
 
     if(!sched_init(&HAL_GetTick)) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\r\n");
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
         return -1;
     }
@@ -249,7 +249,7 @@ int main(void) {
   /* USER CODE BEGIN WHILE */
 
     while (1) {
-        const char *whileString = "Task Dispatched\n\r";
+        const char *whileString = "Task Dispatched\n\r";/
         HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
         sched_dispatch();
         HAL_Delay(500);
