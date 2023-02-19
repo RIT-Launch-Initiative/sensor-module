@@ -95,10 +95,10 @@ RetType ledTask() {
 RetType bmpTask() {
     RESUME();
 
-    RetType ret = CALL(bmp390->pullSensorData());
+//    RetType ret = CALL(bmp390->pullSensorData());
 
     RESET();
-    return ret;
+    return RET_SUCCESS;
 }
 
 // TODO: Figure out the initialization task
