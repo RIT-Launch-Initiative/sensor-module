@@ -95,10 +95,18 @@ RetType ledTask() {
 RetType bmpTask() {
     RESUME();
 
-    RetType ret = CALL(bmp390->pullSensorData());
+    static double pressure = 69;
+    static double temperature = 420;
+
+    CALL(uartDev->write((uint8_t *) "Getting Sensor Data\r\n", 21));
+    static RetType ret = CALL(bmp390->getSensorData(&pressure, &temperature));
+
+    static char buffer[100];
+    size_t size = sprintf(buffer, "BMP Pressure: %f \r\n MP Temperature: %f\r\n", pressure, temperature);
+    CALL(uartDev->write((uint8_t *)buffer, size));
 
     RESET();
-    return ret;
+    return RET_SUCCESS;
 }
 
 // TODO: Figure out the initialization task
@@ -121,7 +129,7 @@ RetType sensorInitTask() {
 
     CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
 
-    static BMP390 bmp(*i2cDev);
+    static BMP390 bmp(*i2cDev, *uartDev);
     bmp390 = &bmp;
     tid_t bmp390TID = -1;
     RetType bmp390Ret = CALL(bmp390->init());
