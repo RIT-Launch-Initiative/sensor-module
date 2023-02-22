@@ -99,11 +99,15 @@ RetType bmpTask() {
     static double temperature = 420;
 
     CALL(uartDev->write((uint8_t *) "Getting Sensor Data\r\n", 21));
-    static RetType ret = CALL(bmp390->getSensorData(&pressure, &temperature));
+    RetType ret = CALL(bmp390->getSensorData(&pressure, &temperature));
+    if (ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
+    }
 
     static char buffer[100];
-    size_t size = sprintf(buffer, "BMP Pressure: %f \r\n MP Temperature: %f\r\n", pressure, temperature);
+    size_t size = sprintf(buffer, "BMP Pressure: %f \r\nBMP Temperature: %f\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
+
 
     RESET();
     return RET_SUCCESS;
@@ -137,6 +141,8 @@ RetType sensorInitTask() {
     if (bmp390Ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
     } else {
+        CALL(uartDev->write((uint8_t *) "BMP Initialized\n\r", 19));
+
         bmp390TID = sched_start(bmpTask);
 
         if (-1 == bmp390TID) {
@@ -224,10 +230,11 @@ int main(void) {
   /* USER CODE BEGIN WHILE */
 
     while (1) {
-        const char *whileString = "Task Dispatched\n\r";
-        HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
+//        const char *whileString = "Task Dispatched\n\r";
+//        HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
         sched_dispatch();
-        HAL_Delay(500);
+        HAL_Delay(50);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
