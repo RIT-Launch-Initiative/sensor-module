@@ -76,7 +76,7 @@ static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 static BMP390 *bmp390 = nullptr;
 static LED *led = nullptr;
-static HALUARTDevice *uartDev = nullptr;
+HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 
 /* USER CODE END PFP */
@@ -107,7 +107,6 @@ RetType bmpTask() {
     static char buffer[100];
     size_t size = sprintf(buffer, "BMP Pressure: %f \r\nBMP Temperature: %f\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
-
 
     RESET();
     return RET_SUCCESS;
@@ -202,8 +201,7 @@ int main(void) {
     char uartBuffer[MAX_UART_BUFF_SIZE];
 
     if(!sched_init(&HAL_GetTick)) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init scheduler\n\r", 30);
         return -1;
     }
 
@@ -215,8 +213,7 @@ int main(void) {
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init I2C1 Device. Exiting.\n\r");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
 
         return -1;
     }
@@ -233,7 +230,7 @@ int main(void) {
 //        const char *whileString = "Task Dispatched\n\r";
 //        HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
         sched_dispatch();
-        HAL_Delay(50);
+//        HAL_Delay(50);
 
     /* USER CODE END WHILE */
 
