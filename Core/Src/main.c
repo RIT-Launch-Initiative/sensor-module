@@ -148,7 +148,7 @@ RetType sensorInitTask(void*) {
 //    if (bmp390Ret == RET_ERROR) {
 //        CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
 //    } else {
-//        bmp390TID = sched_start(bmpTask);
+//        bmp390TID = sched_start(bmpTask, {});
 //
 //        if (-1 == bmp390TID) {
 //            CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
