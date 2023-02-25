@@ -84,7 +84,7 @@ static HALI2CDevice *i2cDev = nullptr;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-RetType ledTask() {
+RetType ledTask(void*) {
     RESUME();
 
     RetType ret = CALL(led->toggle());
@@ -93,7 +93,7 @@ RetType ledTask() {
     return RET_SUCCESS;
 }
 
-RetType bmpTask() {
+RetType bmpTask(void*) {
     RESUME();
 
 //    RetType ret = CALL(bmp390->pullSensorData());
@@ -102,12 +102,13 @@ RetType bmpTask() {
     return RET_SUCCESS;
 }
 
-RetType adxlTask() {
+RetType adxlTask(void*) {
+    RESUME();
     int16_t x;
     int16_t y;
     int16_t z;
 
-    RetType ret = adxl375->readXYZ(&x, &y, &z);
+    RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
     if (ret != RET_SUCCESS) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
         return ret;
@@ -117,11 +118,12 @@ RetType adxlTask() {
     HAL_UART_Transmit(&huart2, (uint8_t *) buf, buffSize, 100);
 
     sched_sleep(sched_dispatched, 5); 
+    RESET();
     return ret;  
 }
 
 // TODO: Figure out the initialization task
-RetType sensorInitTask() {
+RetType sensorInitTask(void*) {
     RESUME();
 
     // TODO: LED is not a sensor but here for testing purposes
@@ -131,7 +133,7 @@ RetType sensorInitTask() {
     if (ret != RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
 
-        ledTID = sched_start(&ledTask);
+        ledTID = sched_start(ledTask, {});
         if (-1 == ledTID) {
             CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
         }
@@ -165,7 +167,7 @@ RetType sensorInitTask() {
     if (adxl375Ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "ADXL Failed to Initialize\r\n", 27));
     } else {
-        adxl375TID = sched_start(adxlTask);
+        adxl375TID = sched_start(adxlTask, {});
 
         if (-1 == adxl375TID) {
             CALL(uartDev->write((uint8_t *) "ADXL Task Startup Failed\n\r", 26));
@@ -241,7 +243,7 @@ int main(void) {
     }
 
     i2cDev = &i2c;
-    sched_start(sensorInitTask);
+    sched_start(sensorInitTask, {});
 
   /* USER CODE END 2 */
 
