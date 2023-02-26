@@ -34,6 +34,7 @@
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP390/BMP3902.h"
+#include "device/peripherals/MS5607/MS5607.h"
 
 
 
@@ -75,6 +76,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 static BMP390 *bmp390 = nullptr;
+static MS5607 *ms5607 = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -109,6 +111,15 @@ RetType bmpTask(void*) {
     return RET_SUCCESS;
 }
 
+RetType ms5607Task(void*) {
+    RESUME();
+
+//    RetType ret = CALL(ms5607->pullSensorData());
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 // TODO: Figure out the initialization task
 RetType sensorInitTask(void*) {
     RESUME();
@@ -124,6 +135,22 @@ RetType sensorInitTask(void*) {
         ledTID = sched_start(ledTask, {});
         if (-1 == ledTID) {
             CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
+        }
+    }
+
+    static MS5607 localMS5607(*i2cDev);
+    ms5607 = &localMS5607;
+    tid_t ms5607TID = -1;
+    RetType ms5607Ret = CALL(ms5607->init());
+    if (ms5607Ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "MS5 Initialization Failed\n\r", 27));
+    } else {
+        ms5607TID = sched_start(&ms5607Task, {});
+        if (-1 == ms5607TID) {
+            CALL(uartDev->write((uint8_t *) "MS5 Task Startup Failed\n\r", 25));
+
+        } else {
+            CALL(uartDev->write((uint8_t *) "MS5 Task Running\r\n", 18));
         }
     }
 
