@@ -83,7 +83,15 @@ static HALI2CDevice *i2cDev = nullptr;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-RetType ledTask() {
+RetType i2cDevPollTask(void*) {
+    RESUME();
+    CALL(i2cDev->poll());
+    RESET();
+
+    return RET_SUCCESS;
+}
+
+RetType ledTask(void*) {
     RESUME();
 
     RetType ret = CALL(led->toggle());
@@ -92,7 +100,7 @@ RetType ledTask() {
     return RET_SUCCESS;
 }
 
-RetType bmpTask() {
+RetType bmpTask(void*) {
     RESUME();
 
     static double pressure = 69;
@@ -113,7 +121,7 @@ RetType bmpTask() {
 }
 
 // TODO: Figure out the initialization task
-RetType sensorInitTask() {
+RetType sensorInitTask(void*) {
     RESUME();
 
 
@@ -124,7 +132,7 @@ RetType sensorInitTask() {
     if (ret != RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
 
-        ledTID = sched_start(&ledTask);
+        ledTID = sched_start(&ledTask, {});
         if (-1 == ledTID) {
             CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
         }
@@ -142,7 +150,7 @@ RetType sensorInitTask() {
     } else {
         CALL(uartDev->write((uint8_t *) "BMP Initialized\n\r", 19));
 
-        bmp390TID = sched_start(bmpTask);
+        bmp390TID = sched_start(bmpTask, {});
 
         if (-1 == bmp390TID) {
             CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
@@ -219,7 +227,9 @@ int main(void) {
     }
 
     i2cDev = &i2c;
-    sched_start(sensorInitTask);
+    sched_start(i2cDevPollTask, {});
+    sched_start(sensorInitTask, {});
+
 
   /* USER CODE END 2 */
 
@@ -230,7 +240,7 @@ int main(void) {
 //        const char *whileString = "Task Dispatched\n\r";
 //        HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
         sched_dispatch();
-//        HAL_Delay(50);
+        HAL_Delay(25);
 
     /* USER CODE END WHILE */
 
