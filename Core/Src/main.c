@@ -224,10 +224,8 @@ int main(void) {
   /* USER CODE BEGIN WHILE */
 
     while (1) {
-        const char *whileString = "Task Dispatched\n\r";
-        HAL_UART_Transmit(&huart2, (uint8_t *) whileString, strlen(whileString), 100);
         sched_dispatch();
-        HAL_Delay(500);
+        HAL_Delay(50);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
