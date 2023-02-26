@@ -127,27 +127,6 @@ RetType sensorInitTask(void*) {
         }
     }
 
-    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
-
-    static BMP390 bmp(*i2cDev);
-    bmp390 = &bmp;
-    tid_t bmp390TID = -1;
-    RetType bmp390Ret = CALL(bmp390->init());
-    if (bmp390Ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
-    } else {
-        bmp390TID = sched_start(bmpTask, {});
-
-        if (-1 == bmp390TID) {
-            CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
-
-        } else {
-            CALL(uartDev->write((uint8_t *) "BMP Task Running\r\n", 18));
-        }
-    }
-
-
-
     RESET();
     return RET_ERROR;
 }
