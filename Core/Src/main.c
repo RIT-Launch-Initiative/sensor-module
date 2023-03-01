@@ -105,6 +105,8 @@ RetType bmpTask(void*) {
 
     static double pressure = 69;
     static double temperature = 420;
+    static bmp3_settings settings;
+
 
     CALL(uartDev->write((uint8_t *) "Getting Sensor Data\r\n", 21));
     RetType ret = CALL(bmp390->getSensorData(&pressure, &temperature));
@@ -112,6 +114,17 @@ RetType bmpTask(void*) {
         CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
     }
 
+    ret = CALL(bmp390->getSettings(&settings));
+    if (ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "Failed to get BMP settings\r\n", 28));
+    }
+    static struct bmp3_status status = {};
+    ret = CALL(bmp390->getStatus(&status));
+    char buff[100];
+    size_t s = snprintf(buff, 100, "BMP Sensor Status cmd: %d %d %d \r\n", status.sensor.cmd_rdy, status.sensor.drdy_press, status.sensor.drdy_temp);
+    HAL_UART_Transmit(&huart2, (uint8_t *)buff, s, 1000);
+    s = snprintf(buff, 100, "BMP Error Status cmd: %d %d %d \r\n", status.err.fatal, status.err.cmd, status.err.conf);
+    HAL_UART_Transmit(&huart2, (uint8_t *)buff, s, 1000);
     static char buffer[100];
     size_t size = sprintf(buffer, "BMP Pressure: %f \r\nBMP Temperature: %f\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
