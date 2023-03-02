@@ -111,8 +111,15 @@ RetType bmpTask(void*) {
 
 RetType lisTask(void*) {
     RESUME();
+    static int16_t magnetic = 13;
+    static int16_t temp = 37;
 
-//    RetType ret = CALL(bmp390->pullSensorData());
+    CALL(uartDev->write((uint8_t *) "LIS Running\r\n", 13));
+    RetType ret = CALL(lis3mdl->pullSensorData(&magnetic, &temp));
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "Magnetic: %d, Temp: %d\r\n", magnetic, temp);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
 
     RESET();
     return RET_SUCCESS;
@@ -145,7 +152,7 @@ RetType sensorInitTask(void*) {
     if (ret != RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "LIS Success Init\r\n", 18));
 
-        lisTID = sched_start(lisTask, {}); // TODO: Update
+        lisTID = sched_start(lisTask, {});
         if (-1 == lisTID) {
             CALL(uartDev->write((uint8_t *) "Failed to init LIS task\n\r", 25));
         }
