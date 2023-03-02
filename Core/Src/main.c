@@ -135,12 +135,13 @@ RetType sensorInitTask(void*) {
             CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
         }
     }
-    
+
     CALL(uartDev->write((uint8_t *) "LIS Initializing\r\n", 18));
-    LIS3MDL lis(*i2cDev);
+
+    static LIS3MDL lis(*i2cDev);
     lis3mdl = &lis;
     tid_t lisTID = -1;
-    ret = CALL(lis3mdl->init());
+    RetType bmp390Ret = CALL(lis3mdl->init());
     if (ret != RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "LIS Success Init\r\n", 18));
 
