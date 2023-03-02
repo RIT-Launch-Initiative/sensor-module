@@ -34,7 +34,7 @@
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP390/BMP3902.h"
-
+#include "device/peripherals/LIS3MDL/LIS3MDL.h"
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -75,6 +75,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 static BMP390 *bmp390 = nullptr;
+static LIS3MDL *lis3mdl = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -87,7 +88,6 @@ RetType i2cDevPollTask(void*) {
     RESUME();
     CALL(i2cDev->poll());
     RESET();
-
     return RET_SUCCESS;
 }
 
@@ -101,6 +101,15 @@ RetType ledTask(void*) {
 }
 
 RetType bmpTask(void*) {
+    RESUME();
+
+//    RetType ret = CALL(bmp390->pullSensorData());
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType lisTask(void*) {
     RESUME();
 
 //    RetType ret = CALL(bmp390->pullSensorData());
@@ -124,6 +133,20 @@ RetType sensorInitTask(void*) {
         ledTID = sched_start(ledTask, {});
         if (-1 == ledTID) {
             CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
+        }
+    }
+    
+    CALL(uartDev->write((uint8_t *) "LIS Initializing\r\n", 18));
+    LIS3MDL lis(*i2cDev);
+    lis3mdl = &lis;
+    tid_t lisTID = -1;
+    ret = CALL(lis3mdl->init());
+    if (ret != RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "LIS Success Init\r\n", 18));
+
+        lisTID = sched_start(lisTask, {}); // TODO: Update
+        if (-1 == lisTID) {
+            CALL(uartDev->write((uint8_t *) "Failed to init LIS task\n\r", 25));
         }
     }
 
