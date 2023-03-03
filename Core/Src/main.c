@@ -111,13 +111,15 @@ RetType bmpTask(void*) {
 
 RetType lisTask(void*) {
     RESUME();
-    static int16_t magnetic = 13;
+    static float magX = 0;
+    static float magY = 0;
+    static float magZ = 0;
+
     static int16_t temp = 37;
 
-    CALL(uartDev->write((uint8_t *) "LIS Running\r\n", 13));
-    RetType ret = CALL(lis3mdl->pullSensorData(&magnetic, &temp));
+    RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
     static char buffer[100];
-    size_t size = snprintf(buffer, 100, "Magnetic: %d, Temp: %d\r\n", magnetic, temp);
+    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX:%f\r\n\tY:%f\r\n\tZ:%f\r\nTemp: %d\r\n", magX, magY, magZ, temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
 
