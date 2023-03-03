@@ -119,9 +119,8 @@ RetType lisTask(void*) {
 
     RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
     static char buffer[100];
-    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX:%f\r\n\tY:%f\r\n\tZ:%f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
+    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
-
 
     RESET();
     return RET_SUCCESS;
@@ -133,31 +132,35 @@ RetType sensorInitTask(void*) {
 
 
     // TODO: LED is not a sensor but here for testing purposes
-    CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
+    CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
     RetType ret = CALL(led->init());
     tid_t ledTID = -1;
     if (ret != RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
-
         ledTID = sched_start(ledTask, {});
         if (-1 == ledTID) {
-            CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
+            CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LED: Device Init Failed\r\n", 25));
     }
 
-    CALL(uartDev->write((uint8_t *) "LIS Initializing\r\n", 18));
-
+    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
     static LIS3MDL lis(*i2cDev);
     lis3mdl = &lis;
     tid_t lisTID = -1;
-    RetType bmp390Ret = CALL(lis3mdl->init());
-    if (ret != RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "LIS Success Init\r\n", 18));
-
+    RetType lis3mdlRet = CALL(lis3mdl->init());
+    if (lis3mdlRet != RET_ERROR) {
         lisTID = sched_start(lisTask, {});
+
         if (-1 == lisTID) {
-            CALL(uartDev->write((uint8_t *) "Failed to init LIS task\n\r", 25));
+            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
         }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
     }
 
     RESET();
