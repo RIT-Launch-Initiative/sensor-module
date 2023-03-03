@@ -115,11 +115,11 @@ RetType lisTask(void*) {
     static float magY = 0;
     static float magZ = 0;
 
-    static int16_t temp = 37;
+    static float temp = 0;
 
     RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
     static char buffer[100];
-    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX:%f\r\n\tY:%f\r\n\tZ:%f\r\nTemp: %d\r\n", magX, magY, magZ, temp);
+    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX:%f\r\n\tY:%f\r\n\tZ:%f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
 
