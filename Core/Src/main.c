@@ -34,7 +34,7 @@
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP390/BMP3902.h"
-
+#include "device/peripherals/LIS3MDL/LIS3MDL.h"
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -75,6 +75,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 static BMP390 *bmp390 = nullptr;
+static LIS3MDL *lis3mdl = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -87,7 +88,6 @@ RetType i2cDevPollTask(void*) {
     RESUME();
     CALL(i2cDev->poll());
     RESET();
-
     return RET_SUCCESS;
 }
 
@@ -109,22 +109,55 @@ RetType bmpTask(void*) {
     return RET_SUCCESS;
 }
 
-// TODO: Figure out the initialization task
+RetType lisTask(void*) {
+    RESUME();
+    static float magX = 0;
+    static float magY = 0;
+    static float magZ = 0;
+    static float temp = 0;
+
+    RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 RetType sensorInitTask(void*) {
     RESUME();
 
-
     // TODO: LED is not a sensor but here for testing purposes
-    CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
+    CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
     RetType ret = CALL(led->init());
     tid_t ledTID = -1;
     if (ret != RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
-
         ledTID = sched_start(ledTask, {});
         if (-1 == ledTID) {
-            CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
+            CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LED: Device Init Failed\r\n", 25));
+    }
+
+    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
+    static LIS3MDL lis(*i2cDev);
+    lis3mdl = &lis;
+    tid_t lisTID = -1;
+    RetType lis3mdlRet = CALL(lis3mdl->init());
+    if (lis3mdlRet != RET_ERROR) {
+        lisTID = sched_start(lisTask, {});
+
+        if (-1 == lisTID) {
+            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
     }
 
     RESET();
@@ -206,7 +239,6 @@ int main(void) {
         sched_dispatch();
         HAL_Delay(50);
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
     }
   /* USER CODE END 3 */
@@ -421,37 +453,6 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-//void print_bmp_data(BMP390 *bmp) {
-//    RetType bmpRetAPI = RET_SUCCESS;
-//    bmp3_status bmpStatus = {};
-//    bmp3_data bmpData = {};
-//    uint8_t uartBuffer2[100];
-//
-//    bmpData = bmp->getSensorData();
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
-//    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    bmpRetAPI = bmp->getStatus(&bmpStatus);
-//    if (bmpRetAPI != RET_SUCCESS) {
-//        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
-//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-//    }
-//
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
-//    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
-//}
 /* USER CODE END 4 */
 
 /**
