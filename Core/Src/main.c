@@ -114,7 +114,6 @@ RetType lisTask(void*) {
     static float magX = 0;
     static float magY = 0;
     static float magZ = 0;
-
     static float temp = 0;
 
     RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
@@ -126,10 +125,8 @@ RetType lisTask(void*) {
     return RET_SUCCESS;
 }
 
-// TODO: Figure out the initialization task
 RetType sensorInitTask(void*) {
     RESUME();
-
 
     // TODO: LED is not a sensor but here for testing purposes
     CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
@@ -242,7 +239,6 @@ int main(void) {
         sched_dispatch();
         HAL_Delay(50);
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
     }
   /* USER CODE END 3 */
@@ -457,37 +453,6 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-//void print_bmp_data(BMP390 *bmp) {
-//    RetType bmpRetAPI = RET_SUCCESS;
-//    bmp3_status bmpStatus = {};
-//    bmp3_data bmpData = {};
-//    uint8_t uartBuffer2[100];
-//
-//    bmpData = bmp->getSensorData();
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
-//    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    bmpRetAPI = bmp->getStatus(&bmpStatus);
-//    if (bmpRetAPI != RET_SUCCESS) {
-//        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
-//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-//    }
-//
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
-//    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
-//}
 /* USER CODE END 4 */
 
 /**
