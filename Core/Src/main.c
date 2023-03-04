@@ -35,6 +35,7 @@
 #include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP390/BMP3902.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
+#include "device/peripherals/SHTC3/SHTC3.h"
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -76,6 +77,7 @@ static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 static BMP390 *bmp390 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
+static SHTC3 *shtc3 = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -125,6 +127,20 @@ RetType lisTask(void*) {
     return RET_SUCCESS;
 }
 
+RetType shtTask(void*) {
+    RESUME();
+    static float temp = 0;
+    static float humidity = 0;
+
+    RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemp: %f\r\n", humidity, temp);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 RetType sensorInitTask(void*) {
     RESUME();
 
@@ -143,22 +159,40 @@ RetType sensorInitTask(void*) {
         CALL(uartDev->write((uint8_t *) "LED: Device Init Failed\r\n", 25));
     }
 
-    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
-    static LIS3MDL lis(*i2cDev);
-    lis3mdl = &lis;
-    tid_t lisTID = -1;
-    RetType lis3mdlRet = CALL(lis3mdl->init());
-    if (lis3mdlRet != RET_ERROR) {
-        lisTID = sched_start(lisTask, {});
+//    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
+//    static LIS3MDL lis(*i2cDev);
+//    lis3mdl = &lis;
+//    tid_t lisTID = -1;
+//    RetType lis3mdlRet = CALL(lis3mdl->init());
+//    if (lis3mdlRet != RET_ERROR) {
+//        lisTID = sched_start(lisTask, {});
+//
+//        if (-1 == lisTID) {
+//            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
+//        } else {
+//            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
+//        }
+//    } else {
+//        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
+//    }
 
-        if (-1 == lisTID) {
-            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
+    CALL(uartDev->write((uint8_t *) "SHT: Initializing\r\n", 19));
+    static SHTC3 sht(*i2cDev);
+    shtc3 = &sht;
+    tid_t shtTID = -1;
+    RetType sht3mdlRet = CALL(shtc3->init());
+    if (sht3mdlRet != RET_ERROR) {
+        shtTID = sched_start(shtTask, {});
+
+        if (-1 == shtTID) {
+            CALL(uartDev->write((uint8_t *) "SHT: Task Init Failed\r\n", 23));
         } else {
-            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
+            CALL(uartDev->write((uint8_t *) "SHT: Initialized\r\n", 18));
         }
     } else {
-        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
+        CALL(uartDev->write((uint8_t *) "SHT: Sensor Init Failed\r\n", 25));
     }
+
 
     RESET();
     return RET_ERROR;
