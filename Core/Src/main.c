@@ -35,6 +35,7 @@
 #include "device/peripherals/BMP390/BMP3902.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
+#include "sched/macros/call.h"
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -112,9 +113,9 @@ RetType bmpTask(void*) {
 
 RetType adxlTask(void*) {
     RESUME();
-    static int16_t x = 0;
-    static int16_t y = 0;
-    static int16_t z = 0;
+    static int16_t x = 69;
+    static int16_t y = 13;
+    static int16_t z = 37;
 
     RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
     if (ret != RET_SUCCESS) {
@@ -122,14 +123,14 @@ RetType adxlTask(void*) {
         return ret;
     }
 
-    static char buf[100];
-    size_t buffSize = sprintf(buf, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
-    HAL_UART_Transmit(&huart2, (uint8_t *) buf, buffSize, 100);
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
+    CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
     return ret;
-
 }
+
 RetType lisTask(void*) {
     RESUME();
     static float magX = 0;
@@ -162,7 +163,7 @@ RetType sensorInitTask(void*) {
         }
     }
 
-    CALL(uartDev->write((uint8_t *) "ADXL Initializing\r\n", 18));
+    CALL(uartDev->write((uint8_t *) "ADXL Initializing\r\n", 19));
 
     static ADXL375 adxl(*i2cDev);
     adxl375 = &adxl;
