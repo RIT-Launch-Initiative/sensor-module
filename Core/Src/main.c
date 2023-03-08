@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2022 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2022 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -24,21 +24,17 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "device/platforms/stm32/HAL_GPIODevice.h"
-#include "device/platforms/stm32/HAL_UARTDevice.h"
-#include "device/platforms/stm32/HAL_SPIDevice.h"
-#include "device/platforms/stm32/HAL_I2CDevice.h"
-
-
-
-#include "device/peripherals/LED/LED.h"
-#include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP390/BMP3902.h"
+#include "device/peripherals/LED/LED.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
+#include "device/peripherals/W25Q/W25Q.h"
+#include "device/platforms/stm32/HAL_GPIODevice.h"
+#include "device/platforms/stm32/HAL_I2CDevice.h"
+#include "device/platforms/stm32/HAL_SPIDevice.h"
+#include "device/platforms/stm32/HAL_UARTDevice.h"
 
-
-//#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
+// #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,21 +75,21 @@ static BMP390 *bmp390 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
 static SHTC3 *shtc3 = nullptr;
 static LED *led = nullptr;
-static HALUARTDevice *uartDev = nullptr;
+HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-RetType i2cDevPollTask(void*) {
+RetType i2cDevPollTask(void *) {
     RESUME();
     CALL(i2cDev->poll());
     RESET();
     return RET_SUCCESS;
 }
 
-RetType ledTask(void*) {
+RetType ledTask(void *) {
     RESUME();
 
     RetType ret = CALL(led->toggle());
@@ -102,16 +98,16 @@ RetType ledTask(void*) {
     return RET_SUCCESS;
 }
 
-RetType bmpTask(void*) {
+RetType bmpTask(void *) {
     RESUME();
 
-//    RetType ret = CALL(bmp390->pullSensorData());
+    //    RetType ret = CALL(bmp390->pullSensorData());
 
     RESET();
     return RET_SUCCESS;
 }
 
-RetType lisTask(void*) {
+RetType lisTask(void *) {
     RESUME();
     static float magX = 0;
     static float magY = 0;
@@ -121,20 +117,20 @@ RetType lisTask(void*) {
     RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
     static char buffer[100];
     size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
-    CALL(uartDev->write((uint8_t *) buffer, size));
+    CALL(uartDev->write((uint8_t *)buffer, size));
 
     RESET();
     return RET_SUCCESS;
 }
 
-RetType shtTask(void*) {
+RetType shtTask(void *) {
     RESUME();
     static float temp = 0;
     static float humidity = 0;
 
     RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));
     if (ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "SHT: Error\r\n", 12));
+        CALL(uartDev->write((uint8_t *)"SHT: Error\r\n", 12));
     }
 
     static char buffer[100];
@@ -145,42 +141,42 @@ RetType shtTask(void*) {
     return RET_SUCCESS;
 }
 
-RetType sensorInitTask(void*) {
+RetType sensorInitTask(void *) {
     RESUME();
 
     // TODO: LED is not a sensor but here for testing purposes
-    CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
+    CALL(uartDev->write((uint8_t *)"LED: Initializing\r\n", 19));
     RetType ret = CALL(led->init());
     tid_t ledTID = -1;
     if (ret != RET_ERROR) {
         ledTID = sched_start(ledTask, {});
         if (-1 == ledTID) {
-            CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
+            CALL(uartDev->write((uint8_t *)"LED: Task Init Failed\r\n", 23));
         } else {
-            CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
+            CALL(uartDev->write((uint8_t *)"LED: Initialized\r\n", 18));
         }
     } else {
-        CALL(uartDev->write((uint8_t *) "LED: Device Init Failed\r\n", 25));
+        CALL(uartDev->write((uint8_t *)"LED: Device Init Failed\r\n", 25));
     }
 
-//    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
-//    static LIS3MDL lis(*i2cDev);
-//    lis3mdl = &lis;
-//    tid_t lisTID = -1;
-//    RetType lis3mdlRet = CALL(lis3mdl->init());
-//    if (lis3mdlRet != RET_ERROR) {
-//        lisTID = sched_start(lisTask, {});
-//
-//        if (-1 == lisTID) {
-//            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
-//        } else {
-//            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
-//        }
-//    } else {
-//        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
-//    }
+    //    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
+    //    static LIS3MDL lis(*i2cDev);
+    //    lis3mdl = &lis;
+    //    tid_t lisTID = -1;
+    //    RetType lis3mdlRet = CALL(lis3mdl->init());
+    //    if (lis3mdlRet != RET_ERROR) {
+    //        lisTID = sched_start(lisTask, {});
+    //
+    //        if (-1 == lisTID) {
+    //            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
+    //        } else {
+    //            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
+    //        }
+    //    } else {
+    //        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
+    //    }
 
-    CALL(uartDev->write((uint8_t *) "SHT: Initializing\r\n", 19));
+    CALL(uartDev->write((uint8_t *)"SHT: Initializing\r\n", 19));
     static SHTC3 sht(*i2cDev);
     shtc3 = &sht;
     tid_t shtTID = -1;
@@ -189,64 +185,61 @@ RetType sensorInitTask(void*) {
         shtTID = sched_start(shtTask, {});
 
         if (-1 == shtTID) {
-            CALL(uartDev->write((uint8_t *) "SHT: Task Init Failed\r\n", 23));
+            CALL(uartDev->write((uint8_t *)"SHT: Task Init Failed\r\n", 23));
         } else {
-            CALL(uartDev->write((uint8_t *) "SHT: Initialized\r\n", 18));
+            CALL(uartDev->write((uint8_t *)"SHT: Initialized\r\n", 18));
         }
     } else {
-        CALL(uartDev->write((uint8_t *) "SHT: Sensor Init Failed\r\n", 25));
+        CALL(uartDev->write((uint8_t *)"SHT: Sensor Init Failed\r\n", 25));
     }
-
 
     RESET();
     return RET_ERROR;
 }
 
-
-
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void) {
-  /* USER CODE BEGIN 1 */
+    /* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+    /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+    /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
 
-  /* USER CODE BEGIN Init */
+    /* USER CODE BEGIN Init */
 
-  /* USER CODE END Init */
+    /* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+    /* Configure the system clock */
+    SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+    /* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+    /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_SPI1_Init();
-  MX_I2C1_Init();
-  MX_USART2_UART_Init();
-  MX_SPI2_Init();
-  /* USER CODE BEGIN 2 */
+    /* Initialize all configured peripherals */
+    MX_GPIO_Init();
+    MX_SPI1_Init();
+    MX_I2C1_Init();
+    MX_USART2_UART_Init();
+    MX_SPI2_Init();
+    /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
     RetType uartRet = uart.init();
     uartDev = &uart;
 
     char uartBuffer[MAX_UART_BUFF_SIZE];
 
-    if(!sched_init(&HAL_GetTick)) {
+    if (!sched_init(&HAL_GetTick)) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *)uartBuffer, strlen(uartBuffer));
         return -1;
     }
 
@@ -259,7 +252,7 @@ int main(void) {
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
         snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init I2C1 Device. Exiting.\n\r");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *)uartBuffer, strlen(uartBuffer));
 
         return -1;
     }
@@ -268,36 +261,36 @@ int main(void) {
     sched_start(i2cDevPollTask, {});
     sched_start(sensorInitTask, {});
 
-  /* USER CODE END 2 */
+    /* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
 
     while (1) {
         sched_dispatch();
         HAL_Delay(50);
-    /* USER CODE END WHILE */
-    /* USER CODE BEGIN 3 */
+        /* USER CODE END WHILE */
+        /* USER CODE BEGIN 3 */
     }
-  /* USER CODE END 3 */
+    /* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void) {
     RCC_OscInitTypeDef RCC_OscInitStruct = {0};
     RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
     /** Configure the main internal regulator output voltage
-    */
+     */
     __HAL_RCC_PWR_CLK_ENABLE();
     __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
     /** Initializes the RCC Oscillators according to the specified parameters
-    * in the RCC_OscInitTypeDef structure.
-    */
+     * in the RCC_OscInitTypeDef structure.
+     */
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
     RCC_OscInitStruct.HSIState = RCC_HSI_ON;
     RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -307,9 +300,8 @@ void SystemClock_Config(void) {
     }
 
     /** Initializes the CPU, AHB and APB buses clocks
-    */
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
-                                  | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+     */
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
     RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
     RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -321,12 +313,11 @@ void SystemClock_Config(void) {
 }
 
 /**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_I2C1_Init(void) {
-
     /* USER CODE BEGIN I2C1_Init 0 */
 
     /* USER CODE END I2C1_Init 0 */
@@ -349,16 +340,14 @@ static void MX_I2C1_Init(void) {
     /* USER CODE BEGIN I2C1_Init 2 */
 
     /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief SPI1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_SPI1_Init(void) {
-
     /* USER CODE BEGIN SPI1_Init 0 */
 
     /* USER CODE END SPI1_Init 0 */
@@ -385,16 +374,14 @@ static void MX_SPI1_Init(void) {
     /* USER CODE BEGIN SPI1_Init 2 */
 
     /* USER CODE END SPI1_Init 2 */
-
 }
 
 /**
-  * @brief SPI2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief SPI2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_SPI2_Init(void) {
-
     /* USER CODE BEGIN SPI2_Init 0 */
 
     /* USER CODE END SPI2_Init 0 */
@@ -421,16 +408,14 @@ static void MX_SPI2_Init(void) {
     /* USER CODE BEGIN SPI2_Init 2 */
 
     /* USER CODE END SPI2_Init 2 */
-
 }
 
 /**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USART2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USART2_UART_Init(void) {
-
     /* USER CODE BEGIN USART2_Init 0 */
 
     /* USER CODE END USART2_Init 0 */
@@ -452,14 +437,13 @@ static void MX_USART2_UART_Init(void) {
     /* USER CODE BEGIN USART2_Init 2 */
 
     /* USER CODE END USART2_Init 2 */
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void) {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -487,39 +471,37 @@ static void MX_GPIO_Init(void) {
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
 }
 
 /* USER CODE BEGIN 4 */
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void) {
     /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "Error\n\r", 7, 100);
+        HAL_UART_Transmit(&huart2, (uint8_t *)"Error\n\r", 7, 100);
     }
     /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
+void assert_failed(uint8_t *file, uint32_t line) {
+    /* USER CODE BEGIN 6 */
+    /* User can add his own implementation to report the file name and line number,
+       ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+    /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
