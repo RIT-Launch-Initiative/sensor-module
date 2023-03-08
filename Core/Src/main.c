@@ -30,11 +30,12 @@
 #include "device/platforms/stm32/HAL_I2CDevice.h"
 
 
-
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP390/BMP3902.h"
+#include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
+#include "sched/macros/call.h"
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -75,6 +76,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 static BMP390 *bmp390 = nullptr;
+static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
@@ -109,6 +111,30 @@ RetType bmpTask(void*) {
     return RET_SUCCESS;
 }
 
+RetType adxlTask(void*) {
+    RESUME();
+    static int16_t x = 0;
+    static int16_t y = 0;
+    static int16_t z = 0;
+
+    RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
+    if (ret != RET_SUCCESS) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
+        return ret;
+    }
+
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
+
+    // Use below if you want to print the values in multiple lines
+    // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
+
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return ret;
+}
+
 RetType lisTask(void*) {
     RESUME();
     static float magX = 0;
@@ -133,31 +159,30 @@ RetType sensorInitTask(void*) {
     RetType ret = CALL(led->init());
     tid_t ledTID = -1;
     if (ret != RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
+
         ledTID = sched_start(ledTask, {});
         if (-1 == ledTID) {
-            CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
-        } else {
-            CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
+            CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
         }
-    } else {
-        CALL(uartDev->write((uint8_t *) "LED: Device Init Failed\r\n", 25));
     }
 
-    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
-    static LIS3MDL lis(*i2cDev);
-    lis3mdl = &lis;
-    tid_t lisTID = -1;
-    RetType lis3mdlRet = CALL(lis3mdl->init());
-    if (lis3mdlRet != RET_ERROR) {
-        lisTID = sched_start(lisTask, {});
+    CALL(uartDev->write((uint8_t *) "ADXL Initializing\r\n", 19));
 
-        if (-1 == lisTID) {
-            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
-        } else {
-            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
-        }
+    static ADXL375 adxl(*i2cDev);
+    adxl375 = &adxl;
+    tid_t adxl375TID = -1;
+    RetType adxl375Ret = CALL(adxl375->init());
+    if (adxl375Ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "ADXL Failed to Initialize\r\n", 27));
     } else {
-        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
+        adxl375TID = sched_start(adxlTask, {});
+
+        if (-1 == adxl375TID) {
+            CALL(uartDev->write((uint8_t *) "ADXL Task Startup Failed\n\r", 26));
+        } else {
+            CALL(uartDev->write((uint8_t *) "ADXL Task Running\r\n", 19));
+        }
     }
 
     RESET();
@@ -207,7 +232,7 @@ int main(void) {
     char uartBuffer[MAX_UART_BUFF_SIZE];
 
     if(!sched_init(&HAL_GetTick)) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\n\r");
+        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\r\n");
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
         return -1;
     }
