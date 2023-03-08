@@ -113,9 +113,9 @@ RetType bmpTask(void*) {
 
 RetType adxlTask(void*) {
     RESUME();
-    static int16_t x = 69;
-    static int16_t y = 13;
-    static int16_t z = 37;
+    static int16_t x = 0;
+    static int16_t y = 0;
+    static int16_t z = 0;
 
     RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
     if (ret != RET_SUCCESS) {
@@ -124,7 +124,11 @@ RetType adxlTask(void*) {
     }
 
     static char buffer[100];
-    size_t size = snprintf(buffer, 100, "ADXL Task Executing: x: %d, y: %d, z: %d\r\n", x, y, z);
+    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
+
+    // Use below if you want to print the values in multiple lines
+    // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
+
     CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
