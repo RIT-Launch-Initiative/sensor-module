@@ -168,7 +168,6 @@ RetType sensorInitTask(void*) {
     }
 
     CALL(uartDev->write((uint8_t *) "ADXL Initializing\r\n", 19));
-
     static ADXL375 adxl(*i2cDev);
     adxl375 = &adxl;
     tid_t adxl375TID = -1;
@@ -183,6 +182,23 @@ RetType sensorInitTask(void*) {
         } else {
             CALL(uartDev->write((uint8_t *) "ADXL Task Running\r\n", 19));
         }
+    }
+
+    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
+    static LIS3MDL lis(*i2cDev);
+    lis3mdl = &lis;
+    tid_t lisTID = -1;
+    RetType lis3mdlRet = CALL(lis3mdl->init());
+    if (lis3mdlRet != RET_ERROR) {
+        lisTID = sched_start(lisTask, {});
+
+        if (-1 == lisTID) {
+            CALL(uartDev->write((uint8_t *) "LIS: Task Init Failed\r\n", 23));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LIS: Initialized\r\n", 18));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LIS: Sensor Init Failed\r\n", 25));
     }
 
     RESET();
