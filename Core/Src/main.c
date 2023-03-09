@@ -32,7 +32,7 @@
 
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
-#include "device/peripherals/BMP390/BMP3902.h"
+#include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
 #include "sched/macros/call.h"
@@ -75,7 +75,7 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-static BMP390 *bmp390 = nullptr;
+static BMP3XX *bmp3XX = nullptr;
 static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
 static LED *led = nullptr;
@@ -105,7 +105,17 @@ RetType ledTask(void*) {
 RetType bmpTask(void*) {
     RESUME();
 
-//    RetType ret = CALL(bmp390->pullSensorData());
+    static char buffer[100];
+    static double pressure = 0;
+    static double temperature = 0;
+
+    RetType ret = CALL(bmp3XX->getPressureAndTemp(&pressure, &temperature));
+    if (ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
+    }
+
+    size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
+    CALL(uartDev->write((uint8_t *)buffer, size));
 
     RESET();
     return RET_SUCCESS;
@@ -132,9 +142,10 @@ RetType adxlTask(void*) {
     CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
-    return ret;
+    return RET_SUCCESS;
 }
 
+// TODO: Figure out the initialization task
 RetType lisTask(void*) {
     RESUME();
     static float magX = 0;
@@ -202,9 +213,28 @@ RetType sensorInitTask(void*) {
         CALL(uartDev->write((uint8_t *) "LIS3MDL: Sensor Init Failed\r\n", 29));
     }
 
+    CALL(uartDev->write((uint8_t *) "BMP388: Initializing\r\n", 22));
+    static BMP3XX bmp(*i2cDev);
+    bmp3XX = &bmp;
+    tid_t bmpTID = -1;
+    RetType bmp3Ret = CALL(bmp3XX->init());
+    if (bmp3Ret != RET_ERROR) {
+        bmpTID = sched_start(bmpTask, {});
+
+        if (-1 == bmpTID) {
+            CALL(uartDev->write((uint8_t *) "BMP388: Task Init Failed\r\n", 26));
+        } else {
+            CALL(uartDev->write((uint8_t *) "BMP388: Initialized\r\n", 21));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "BMP388: Sensor Init Failed\r\n", 28));
+    }
+
     RESET();
     return RET_ERROR;
 }
+
+
 
 
 
@@ -249,8 +279,7 @@ int main(void) {
     char uartBuffer[MAX_UART_BUFF_SIZE];
 
     if(!sched_init(&HAL_GetTick)) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init scheduler\r\n");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init scheduler\n\r", 30);
         return -1;
     }
 
@@ -262,8 +291,7 @@ int main(void) {
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
-        snprintf(uartBuffer, MAX_UART_BUFF_SIZE, "Failed to init I2C1 Device. Exiting.\n\r");
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) uartBuffer, strlen(uartBuffer));
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
 
         return -1;
     }
@@ -271,7 +299,6 @@ int main(void) {
     i2cDev = &i2c;
     sched_start(i2cDevPollTask, {});
     sched_start(sensorInitTask, {});
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -495,6 +522,7 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+
 /* USER CODE END 4 */
 
 /**
