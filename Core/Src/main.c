@@ -30,11 +30,12 @@
 #include "device/platforms/stm32/HAL_I2CDevice.h"
 
 
-
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP3XX/BMP3XX.h"
-
+#include "device/peripherals/ADXL375/ADXL375.h"
+#include "device/peripherals/LIS3MDL/LIS3MDL.h"
+#include "sched/macros/call.h"
 
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -74,9 +75,11 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-static BMP3XX *bmp390 = nullptr;
+static BMP3XX *bmp3XX = nullptr;
+static ADXL375 *adxl375 = nullptr;
+static LIS3MDL *lis3mdl = nullptr;
 static LED *led = nullptr;
-HALUARTDevice *uartDev = nullptr;
+static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 
 /* USER CODE END PFP */
@@ -87,7 +90,6 @@ RetType i2cDevPollTask(void*) {
     RESUME();
     CALL(i2cDev->poll());
     RESET();
-
     return RET_SUCCESS;
 }
 
@@ -103,13 +105,11 @@ RetType ledTask(void*) {
 RetType bmpTask(void*) {
     RESUME();
 
-    static double pressure = 69;
-    static double temperature = 420;
-    static bmp3_settings settings;
     static char buffer[100];
+    static double pressure = 0;
+    static double temperature = 0;
 
-
-    RetType ret = CALL(bmp390->getPressureAndTemp(&pressure, &temperature));
+    RetType ret = CALL(bmp3XX->getPressureAndTemp(&pressure, &temperature));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
     }
@@ -117,55 +117,125 @@ RetType bmpTask(void*) {
     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
 
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType adxlTask(void*) {
+    RESUME();
+    static int16_t x = 0;
+    static int16_t y = 0;
+    static int16_t z = 0;
+
+    RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
+    if (ret != RET_SUCCESS) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "ADXL Task Failed\r\n", 18, 100);
+        return ret;
+    }
+
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
+
+    // Use below if you want to print the values in multiple lines
+    // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
+
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
     RESET();
     return RET_SUCCESS;
 }
 
 // TODO: Figure out the initialization task
+RetType lisTask(void*) {
+    RESUME();
+    static float magX = 0;
+    static float magY = 0;
+    static float magZ = 0;
+    static float temp = 0;
+
+    RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 RetType sensorInitTask(void*) {
     RESUME();
 
-
     // TODO: LED is not a sensor but here for testing purposes
-    CALL(uartDev->write((uint8_t *) "LED Initializing\r\n", 18));
+    CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
     RetType ret = CALL(led->init());
     tid_t ledTID = -1;
     if (ret != RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "LED Success Init\r\n", 18));
+        ledTID = sched_start(ledTask, {});
 
-        ledTID = sched_start(&ledTask, {});
         if (-1 == ledTID) {
-            CALL(uartDev->write((uint8_t *) "Failed to init LED task\n\r", 25));
-        }
-    }
-
-    CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
-
-    static BMP3XX bmp(*i2cDev);
-    bmp390 = &bmp;
-    tid_t bmp390TID = -1;
-    RetType bmp390Ret = CALL(bmp390->init());
-
-    if (bmp390Ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "BMP Failed to Initialize\r\n", 26));
-    } else {
-        CALL(uartDev->write((uint8_t *) "BMP Initialized\n\r", 19));
-
-        bmp390TID = sched_start(bmpTask, {});
-
-        if (-1 == bmp390TID) {
-            CALL(uartDev->write((uint8_t *) "BMP Task Startup Failed\n\r", 25));
-
+            CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
         } else {
-            CALL(uartDev->write((uint8_t *) "BMP Task Running\r\n", 18));
+            CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
     }
 
+    CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
+    static ADXL375 adxl(*i2cDev);
+    adxl375 = &adxl;
+    tid_t adxl375TID = -1;
+    RetType adxl375Ret = CALL(adxl375->init());
+    if (adxl375Ret != RET_ERROR) {
+        adxl375TID = sched_start(adxlTask, {});
 
+        if (-1 == adxl375TID) {
+            CALL(uartDev->write((uint8_t *) "ADXL375: Task Init Failed\r\n", 27));
+        } else {
+            CALL(uartDev->write((uint8_t *) "ADXL375: Initialized\r\n", 22));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "ADXL375: Sensor Init Failed\r\n", 29));
+    }
+
+    CALL(uartDev->write((uint8_t *) "LIS3MDL: Initializing\r\n", 23));
+    static LIS3MDL lis(*i2cDev);
+    lis3mdl = &lis;
+    tid_t lisTID = -1;
+    RetType lis3mdlRet = CALL(lis3mdl->init());
+    if (lis3mdlRet != RET_ERROR) {
+        lisTID = sched_start(lisTask, {});
+
+        if (-1 == lisTID) {
+            CALL(uartDev->write((uint8_t *) "LIS3MDL: Task Init Failed\r\n", 27));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LIS3MDL: Initialized\r\n", 22));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LIS3MDL: Sensor Init Failed\r\n", 29));
+    }
+
+    CALL(uartDev->write((uint8_t *) "BMP388: Initializing\r\n", 22));
+    static BMP3XX bmp(*i2cDev);
+    bmp3XX = &bmp;
+    tid_t bmpTID = -1;
+    RetType bmp3Ret = CALL(bmp3XX->init());
+    if (bmp3Ret != RET_ERROR) {
+        bmpTID = sched_start(lisTask, {});
+
+        if (-1 == bmpTID) {
+            CALL(uartDev->write((uint8_t *) "BMP388: Task Init Failed\r\n", 26));
+        } else {
+            CALL(uartDev->write((uint8_t *) "BMP388: Initialized\r\n", 21));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "BMP388: Sensor Init Failed\r\n", 28));
+    }
 
     RESET();
     return RET_ERROR;
 }
+
+
 
 
 
@@ -230,8 +300,6 @@ int main(void) {
     i2cDev = &i2c;
     sched_start(i2cDevPollTask, {});
     sched_start(sensorInitTask, {});
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -455,37 +523,7 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-//void print_bmp_data(BMP3XX *bmp) {
-//    RetType bmpRetAPI = RET_SUCCESS;
-//    bmp3_status bmpStatus = {};
-//    bmp3_data bmpData = {};
-//    uint8_t uartBuffer2[100];
-//
-//    bmpData = bmp->getSensorData();
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Readings: \n\r", 12, 100);
-//    sprintf((char *) uartBuffer2, "\tTemperature: %f\r\n", bmpData.temperature);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//    sprintf((char *) uartBuffer2, "\tPressure: %f\r\n", bmpData.pressure);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    bmpRetAPI = bmp->getStatus(&bmpStatus);
-//    if (bmpRetAPI != RET_SUCCESS) {
-//        const char *bmpErrStr = "Failed to get bmp390 status\n\r";
-//        HAL_UART_Transmit(&huart2, (const uint8_t *) bmpErrStr, strlen(bmpErrStr), 100);
-//    }
-//
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "Errors: \n\r", 10, 100);
-//    sprintf((char *) uartBuffer2, "\tFatal: %d\r\n", bmpStatus.err.fatal);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    sprintf((char *) uartBuffer2, "\tCmd: %d\r\n", bmpStatus.err.cmd);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    sprintf((char *) uartBuffer2, "\tConf: %d\r\n", bmpStatus.err.conf);
-//    HAL_UART_Transmit(&huart2, uartBuffer2, strlen((char *) uartBuffer2), 100);
-//
-//    HAL_UART_Transmit(&huart2, (const uint8_t *) "------------------------\r\n", 26, 100);
-//}
+
 /* USER CODE END 4 */
 
 /**

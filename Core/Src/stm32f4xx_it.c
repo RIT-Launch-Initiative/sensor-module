@@ -93,6 +93,7 @@ void HardFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+    HAL_Delay(10000);
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }
