@@ -33,7 +33,7 @@
 
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/W25Q/W25Q.h"
-#include "device/peripherals/BMP390/BMP3902.h"
+#include "device/peripherals/BMP3XX/BMP3XX.h"
 
 
 
@@ -74,7 +74,7 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-static BMP390 *bmp390 = nullptr;
+static BMP3XX *bmp390 = nullptr;
 static LED *led = nullptr;
 HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -106,26 +106,14 @@ RetType bmpTask(void*) {
     static double pressure = 69;
     static double temperature = 420;
     static bmp3_settings settings;
+    static char buffer[100];
 
 
-    CALL(uartDev->write((uint8_t *) "Getting Sensor Data\r\n", 21));
     RetType ret = CALL(bmp390->getSensorData(&pressure, &temperature));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
     }
 
-    ret = CALL(bmp390->getSettings(&settings));
-    if (ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "Failed to get BMP settings\r\n", 28));
-    }
-    static struct bmp3_status status = {};
-    ret = CALL(bmp390->getStatus(&status));
-    char buff[100];
-    size_t s = snprintf(buff, 100, "BMP Sensor Status cmd: %d %d %d \r\n", status.sensor.cmd_rdy, status.sensor.drdy_press, status.sensor.drdy_temp);
-    HAL_UART_Transmit(&huart2, (uint8_t *)buff, s, 1000);
-    s = snprintf(buff, 100, "BMP Error Status cmd: %d %d %d \r\n", status.err.fatal, status.err.cmd, status.err.conf);
-    HAL_UART_Transmit(&huart2, (uint8_t *)buff, s, 1000);
-    static char buffer[100];
     size_t size = sprintf(buffer, "BMP Pressure: %f \r\nBMP Temperature: %f\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
 
@@ -153,7 +141,7 @@ RetType sensorInitTask(void*) {
 
     CALL(uartDev->write((uint8_t *) "BMP Initializing\r\n", 18));
 
-    static BMP390 bmp(*i2cDev, *uartDev);
+    static BMP3XX bmp(*i2cDev);
     bmp390 = &bmp;
     tid_t bmp390TID = -1;
     RetType bmp390Ret = CALL(bmp390->init());
@@ -471,7 +459,7 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-//void print_bmp_data(BMP390 *bmp) {
+//void print_bmp_data(BMP3XX *bmp) {
 //    RetType bmpRetAPI = RET_SUCCESS;
 //    bmp3_status bmpStatus = {};
 //    bmp3_data bmpData = {};
