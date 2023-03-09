@@ -114,7 +114,7 @@ RetType bmpTask(void*) {
         CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
     }
 
-    size_t size = sprintf(buffer, "BMP Pressure: %f \r\nBMP Temperature: %f\r\n", pressure, temperature);
+    size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
 
     RESET();
