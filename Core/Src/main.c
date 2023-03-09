@@ -117,7 +117,6 @@ RetType bmpTask(void*) {
     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
 
-
     RESET();
     return RET_SUCCESS;
 }
@@ -220,7 +219,7 @@ RetType sensorInitTask(void*) {
     tid_t bmpTID = -1;
     RetType bmp3Ret = CALL(bmp3XX->init());
     if (bmp3Ret != RET_ERROR) {
-        bmpTID = sched_start(lisTask, {});
+        bmpTID = sched_start(bmpTask, {});
 
         if (-1 == bmpTID) {
             CALL(uartDev->write((uint8_t *) "BMP388: Task Init Failed\r\n", 26));
