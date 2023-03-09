@@ -109,7 +109,7 @@ RetType bmpTask(void*) {
     static char buffer[100];
 
 
-    RetType ret = CALL(bmp390->getSensorData(&pressure, &temperature));
+    RetType ret = CALL(bmp390->getPressureAndTemp(&pressure, &temperature));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
     }
