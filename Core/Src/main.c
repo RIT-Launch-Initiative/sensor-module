@@ -176,7 +176,7 @@ RetType ms5607Task(void*) {
     }
 
     static char buffer[100];
-    size_t size = sprintf(buffer, "MS5607 Pressure: %f Pa \r\nMS5607 Temperature: %f C\r\n", pressure, temperature);
+    size_t size = sprintf(buffer, "MS5607 Pressure: %ld Pa \r\nMS5607 Temperature: %ld C\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *)buffer, size));
 
     RESET();
