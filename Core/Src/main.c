@@ -175,7 +175,7 @@ RetType lsmTask(void*) {
     static int32_t gyroY = 0;
     static int32_t gyroZ = 0;
 
-    RetType ret = CALL(lsm6dsl->getAccelAxes(&accX, &accY, &accZ));
+    RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&accX, &accY, &accZ));
     if (ret != RET_SUCCESS) {
         CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Accel Axes\r\n", 34));
     }
@@ -185,8 +185,8 @@ RetType lsmTask(void*) {
         CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Gyro Axes\r\n", 34));
     }
 
-    static char buffer[100];
-    size_t size = snprintf(buffer, 100, "LSM6DSL: Accel\tGyro\r\n\t  X: %d\t %d\r\n\t  Y: %d\t %d\r\n\t  Z: %d\t %d\r\n", accX, gyroX, accY, gyroY, accZ, gyroZ);
+    static char buffer[120];
+    size_t size = snprintf(buffer, 120, "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %d m/s^2\r\n\t\tY: %d m/s^2\r\n\t\tZ: %d m/s^2\r\n\tGyro: \r\n\t\tX: %d dps\r\n\t\tY: %d dps\r\n\t\tZ: %d dps\r\n", accX, accY, accZ, gyroX, gyroY, gyroZ);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
