@@ -35,6 +35,8 @@
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
+#include "device/peripherals/LSM6DSL/LSM6DSL.h"
+
 #include "sched/macros/call.h"
 
 
@@ -78,6 +80,7 @@ static void MX_SPI2_Init(void);
 static BMP3XX *bmp3XX = nullptr;
 static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
+static LSM6DSL *lsm6dsl = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -145,7 +148,6 @@ RetType adxlTask(void*) {
     return RET_SUCCESS;
 }
 
-// TODO: Figure out the initialization task
 RetType lisTask(void*) {
     RESUME();
     static float magX = 0;
@@ -156,6 +158,35 @@ RetType lisTask(void*) {
     RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
     static char buffer[100];
     size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType lsmTask(void*) {
+    RESUME();
+
+    static int32_t accX = 0;
+    static int32_t accY = 0;
+    static int32_t accZ = 0;
+
+    static int32_t gyroX = 0;
+    static int32_t gyroY = 0;
+    static int32_t gyroZ = 0;
+
+    RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&accX, &accY, &accZ));
+    if (ret != RET_SUCCESS) {
+        CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Accel Axes\r\n", 34));
+    }
+
+    ret = CALL(lsm6dsl->getGyroAxes(&gyroX, &gyroY, &gyroZ));
+    if (ret != RET_SUCCESS) {
+        CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Gyro Axes\r\n", 34));
+    }
+
+    static char buffer[120];
+    size_t size = snprintf(buffer, 120, "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %d m/s^2\r\n\t\tY: %d m/s^2\r\n\t\tZ: %d m/s^2\r\n\tGyro: \r\n\t\tX: %d dps\r\n\t\tY: %d dps\r\n\t\tZ: %d dps\r\n", accX, accY, accZ, gyroX, gyroY, gyroZ);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
@@ -178,57 +209,74 @@ RetType sensorInitTask(void*) {
             CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
     }
+    
+    CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
+    static LSM6DSL lsm(*i2cDev);
+    lsm6dsl = &lsm;
+    tid_t lsmTID = -1;
+    RetType lsm6dslRet = CALL(lsm6dsl->init());
+    if (lsm6dslRet != RET_ERROR) {
+        lsmTID = sched_start(lsmTask, {});
 
-    CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
-    static ADXL375 adxl(*i2cDev);
-    adxl375 = &adxl;
-    tid_t adxl375TID = -1;
-    RetType adxl375Ret = CALL(adxl375->init());
-    if (adxl375Ret != RET_ERROR) {
-        adxl375TID = sched_start(adxlTask, {});
-
-        if (-1 == adxl375TID) {
-            CALL(uartDev->write((uint8_t *) "ADXL375: Task Init Failed\r\n", 27));
+        if (-1 == lsmTID) {
+            CALL(uartDev->write((uint8_t *) "LSM6DSL: Task Init Failed\r\n", 27));
         } else {
-            CALL(uartDev->write((uint8_t *) "ADXL375: Initialized\r\n", 22));
+            CALL(uartDev->write((uint8_t *) "LSM6DSL: Initialized\r\n", 22));
         }
     } else {
-        CALL(uartDev->write((uint8_t *) "ADXL375: Sensor Init Failed\r\n", 29));
+        CALL(uartDev->write((uint8_t *) "LSM6DSL: Sensor Init Failed\r\n", 29));
     }
 
-    CALL(uartDev->write((uint8_t *) "LIS3MDL: Initializing\r\n", 23));
-    static LIS3MDL lis(*i2cDev);
-    lis3mdl = &lis;
-    tid_t lisTID = -1;
-    RetType lis3mdlRet = CALL(lis3mdl->init());
-    if (lis3mdlRet != RET_ERROR) {
-        lisTID = sched_start(lisTask, {});
-
-        if (-1 == lisTID) {
-            CALL(uartDev->write((uint8_t *) "LIS3MDL: Task Init Failed\r\n", 27));
-        } else {
-            CALL(uartDev->write((uint8_t *) "LIS3MDL: Initialized\r\n", 22));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "LIS3MDL: Sensor Init Failed\r\n", 29));
-    }
-
-    CALL(uartDev->write((uint8_t *) "BMP388: Initializing\r\n", 22));
-    static BMP3XX bmp(*i2cDev);
-    bmp3XX = &bmp;
-    tid_t bmpTID = -1;
-    RetType bmp3Ret = CALL(bmp3XX->init());
-    if (bmp3Ret != RET_ERROR) {
-        bmpTID = sched_start(bmpTask, {});
-
-        if (-1 == bmpTID) {
-            CALL(uartDev->write((uint8_t *) "BMP388: Task Init Failed\r\n", 26));
-        } else {
-            CALL(uartDev->write((uint8_t *) "BMP388: Initialized\r\n", 21));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "BMP388: Sensor Init Failed\r\n", 28));
-    }
+//    CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
+//    static ADXL375 adxl(*i2cDev);
+//    adxl375 = &adxl;
+//    tid_t adxl375TID = -1;
+//    RetType adxl375Ret = CALL(adxl375->init());
+//    if (adxl375Ret != RET_ERROR) {
+//        adxl375TID = sched_start(adxlTask, {});
+//
+//        if (-1 == adxl375TID) {
+//            CALL(uartDev->write((uint8_t *) "ADXL375: Task Init Failed\r\n", 27));
+//        } else {
+//            CALL(uartDev->write((uint8_t *) "ADXL375: Initialized\r\n", 22));
+//        }
+//    } else {
+//        CALL(uartDev->write((uint8_t *) "ADXL375: Sensor Init Failed\r\n", 29));
+//    }
+//
+//    CALL(uartDev->write((uint8_t *) "LIS3MDL: Initializing\r\n", 23));
+//    static LIS3MDL lis(*i2cDev);
+//    lis3mdl = &lis;
+//    tid_t lisTID = -1;
+//    RetType lis3mdlRet = CALL(lis3mdl->init());
+//    if (lis3mdlRet != RET_ERROR) {
+//        lisTID = sched_start(lisTask, {});
+//
+//        if (-1 == lisTID) {
+//            CALL(uartDev->write((uint8_t *) "LIS3MDL: Task Init Failed\r\n", 27));
+//        } else {
+//            CALL(uartDev->write((uint8_t *) "LIS3MDL: Initialized\r\n", 22));
+//        }
+//    } else {
+//        CALL(uartDev->write((uint8_t *) "LIS3MDL: Sensor Init Failed\r\n", 29));
+//    }
+//
+//    CALL(uartDev->write((uint8_t *) "BMP388: Initializing\r\n", 22));
+//    static BMP3XX bmp(*i2cDev);
+//    bmp3XX = &bmp;
+//    tid_t bmpTID = -1;
+//    RetType bmp3Ret = CALL(bmp3XX->init());
+//    if (bmp3Ret != RET_ERROR) {
+//        bmpTID = sched_start(bmpTask, {});
+//
+//        if (-1 == bmpTID) {
+//            CALL(uartDev->write((uint8_t *) "BMP388: Task Init Failed\r\n", 26));
+//        } else {
+//            CALL(uartDev->write((uint8_t *) "BMP388: Initialized\r\n", 21));
+//        }
+//    } else {
+//        CALL(uartDev->write((uint8_t *) "BMP388: Sensor Init Failed\r\n", 28));
+//    }
 
     RESET();
     return RET_ERROR;
@@ -551,7 +599,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     ex: printf("Wrong parameters value: file %s on line %ld\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
