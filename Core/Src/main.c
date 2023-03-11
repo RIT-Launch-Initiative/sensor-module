@@ -35,6 +35,8 @@
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
+#include "device/peripherals/LSM6DSL/LSM6DSL.h"
+
 #include "sched/macros/call.h"
 
 
@@ -78,6 +80,7 @@ static void MX_SPI2_Init(void);
 static BMP3XX *bmp3XX = nullptr;
 static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
+static LSM6DSL *lsm6dsl = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -145,7 +148,6 @@ RetType adxlTask(void*) {
     return RET_SUCCESS;
 }
 
-// TODO: Figure out the initialization task
 RetType lisTask(void*) {
     RESUME();
     static float magX = 0;
@@ -157,6 +159,15 @@ RetType lisTask(void*) {
     static char buffer[100];
     size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType lsmTask(void*) {
+    RESUME();
+
+    CALL(uartDev->write((uint8_t *) "LSM6DSL: Reading\r\n", 18));
 
     RESET();
     return RET_SUCCESS;
@@ -177,6 +188,23 @@ RetType sensorInitTask(void*) {
         } else {
             CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
+    }
+    
+    CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
+    static LSM6DSL lsm(*i2cDev);
+    lsm6dsl = &lsm;
+    tid_t lsmTID = -1;
+    RetType lsm6dslRet = CALL(lsm6dsl->init());
+    if (lsm6dslRet != RET_ERROR) {
+        lsmTID = sched_start(lsmTask, {});
+
+        if (-1 == lsmTID) {
+            CALL(uartDev->write((uint8_t *) "LSM6DSL: Task Init Failed\r\n", 27));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LSM6DSL: Initialized\r\n", 22));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LSM6DSL: Sensor Init Failed\r\n", 29));
     }
 
     CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
