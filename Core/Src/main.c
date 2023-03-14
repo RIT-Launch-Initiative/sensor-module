@@ -35,6 +35,7 @@
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
+#include "device/peripherals/LSM6DSL/LSM6DSL.h"
 #include "device/peripherals/MS5607/MS5607.h"
 
 #include "sched/macros/call.h"
@@ -80,6 +81,7 @@ static MS5607 *ms5607 = nullptr;
 static BMP3XX *bmp3XX = nullptr;
 static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
+static LSM6DSL *lsm6dsl = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
@@ -147,7 +149,35 @@ RetType adxlTask(void*) {
     return RET_SUCCESS;
 }
 
-// TODO: Figure out the initialization task
+RetType lsmTask(void*) {
+    RESUME();
+
+    static int32_t accX = 0;
+    static int32_t accY = 0;
+    static int32_t accZ = 0;
+
+    static int32_t gyroX = 0;
+    static int32_t gyroY = 0;
+    static int32_t gyroZ = 0;
+
+    RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&accX, &accY, &accZ));
+    if (ret != RET_SUCCESS) {
+        CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Accel Axes\r\n", 34));
+    }
+
+    ret = CALL(lsm6dsl->getGyroAxes(&gyroX, &gyroY, &gyroZ));
+    if (ret != RET_SUCCESS) {
+        CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Gyro Axes\r\n", 34));
+    }
+
+    static char buffer[120];
+    size_t size = snprintf(buffer, 120, "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %d m/s^2\r\n\t\tY: %d m/s^2\r\n\t\tZ: %d m/s^2\r\n\tGyro: \r\n\t\tX: %d dps\r\n\t\tY: %d dps\r\n\t\tZ: %d dps\r\n", accX, accY, accZ, gyroX, gyroY, gyroZ);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 RetType lisTask(void*) {
     RESUME();
     static float magX = 0;
@@ -200,6 +230,23 @@ RetType sensorInitTask(void*) {
         } else {
             CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
+    }
+
+    CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
+    static LSM6DSL lsm(*i2cDev);
+    lsm6dsl = &lsm;
+    tid_t lsmTID = -1;
+    RetType lsm6dslRet = CALL(lsm6dsl->init());
+    if (lsm6dslRet != RET_ERROR) {
+        lsmTID = sched_start(lsmTask, {});
+
+        if (-1 == lsmTID) {
+            CALL(uartDev->write((uint8_t *) "LSM6DSL: Task Init Failed\r\n", 27));
+        } else {
+            CALL(uartDev->write((uint8_t *) "LSM6DSL: Initialized\r\n", 22));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "LSM6DSL: Sensor Init Failed\r\n", 29));
     }
 
     CALL(uartDev->write((uint8_t *) "MS5607: Initializing\r\n", 22));
@@ -273,10 +320,6 @@ RetType sensorInitTask(void*) {
     RESET();
     return RET_ERROR;
 }
-
-
-
-
 
 /* USER CODE END 0 */
 
@@ -590,7 +633,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     ex: printf("Wrong parameters value: file %s on line %ld\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
