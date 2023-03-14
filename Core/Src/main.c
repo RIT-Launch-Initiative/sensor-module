@@ -164,20 +164,22 @@ RetType lisTask(void*) {
     return RET_SUCCESS;
 }
 
-RetType ms5607Task(void*) {
+RetType ms5607Task(void *) {
     RESUME();
 
-    static int32_t pressure = 0;
-    static int32_t temperature = 0;
+    static float pressure = 0;
+    static float temperature = 0;
 
-    RetType ret = CALL(ms5607->calcPressureTemp(&pressure, &temperature));
+    RetType ret = CALL(ms5607->getPressureTemp(&pressure, &temperature));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "Failed to get MS5607 data\r\n", 27));
     }
 
+    static float altitude = ms5607->getAltitude(pressure, temperature);
+
     static char buffer[100];
-    size_t size = sprintf(buffer, "MS5607 Pressure: %ld Pa \r\nMS5607 Temperature: %ld C\r\n", pressure, temperature);
-    CALL(uartDev->write((uint8_t *)buffer, size));
+    size_t size = sprintf(buffer, "MS5607:\r\n\tPressure: %.2f mBar\r\n\tTemperature: %.2f C\r\n\tAltitude: %f\r\n", pressure, temperature, altitude);
+    CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
     return RET_SUCCESS;
