@@ -26,19 +26,19 @@
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_UARTDevice.h"
-#include "device/platforms/stm32/HAL_SPIDevice.h"
+//#include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
 
 
 #include "device/peripherals/LED/LED.h"
-#include "device/peripherals/W25Q/W25Q.h"
+//#include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
 #include "device/peripherals/LSM6DSL/LSM6DSL.h"
+#include "device/peripherals/MS5607/MS5607.h"
 
 #include "sched/macros/call.h"
-
 
 //#include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
@@ -77,6 +77,7 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
+static MS5607 *ms5607 = nullptr;
 static BMP3XX *bmp3XX = nullptr;
 static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
@@ -148,22 +149,6 @@ RetType adxlTask(void*) {
     return RET_SUCCESS;
 }
 
-RetType lisTask(void*) {
-    RESUME();
-    static float magX = 0;
-    static float magY = 0;
-    static float magZ = 0;
-    static float temp = 0;
-
-    RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
-    static char buffer[100];
-    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
-    CALL(uartDev->write((uint8_t *) buffer, size));
-
-    RESET();
-    return RET_SUCCESS;
-}
-
 RetType lsmTask(void*) {
     RESUME();
 
@@ -193,6 +178,43 @@ RetType lsmTask(void*) {
     return RET_SUCCESS;
 }
 
+RetType lisTask(void*) {
+    RESUME();
+    static float magX = 0;
+    static float magY = 0;
+    static float magZ = 0;
+    static float temp = 0;
+
+    RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
+    static char buffer[100];
+    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType ms5607Task(void *) {
+    RESUME();
+
+    static float pressure = 0;
+    static float temperature = 0;
+
+    RetType ret = CALL(ms5607->getPressureTemp(&pressure, &temperature));
+    if (ret == RET_ERROR) {
+        CALL(uartDev->write((uint8_t *) "Failed to get MS5607 data\r\n", 27));
+    }
+
+    static float altitude = ms5607->getAltitude(pressure, temperature);
+
+    static char buffer[100];
+    size_t size = sprintf(buffer, "MS5607:\r\n\tPressure: %.2f mBar\r\n\tTemperature: %.2f C\r\n\tAltitude: %f\r\n", pressure, temperature, altitude);
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 RetType sensorInitTask(void*) {
     RESUME();
 
@@ -209,7 +231,7 @@ RetType sensorInitTask(void*) {
             CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
     }
-    
+
     CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
     static LSM6DSL lsm(*i2cDev);
     lsm6dsl = &lsm;
@@ -225,6 +247,23 @@ RetType sensorInitTask(void*) {
         }
     } else {
         CALL(uartDev->write((uint8_t *) "LSM6DSL: Sensor Init Failed\r\n", 29));
+    }
+
+    CALL(uartDev->write((uint8_t *) "MS5607: Initializing\r\n", 22));
+    static MS5607 ms5(*i2cDev);
+    ms5607 = &ms5;
+    tid_t ms5TID = -1;
+    RetType ms5Ret = CALL(ms5607->init());
+    if (ms5Ret != RET_ERROR) {
+        ms5TID = sched_start(ms5607Task, {});
+
+        if (-1 == ms5TID) {
+            CALL(uartDev->write((uint8_t *) "MS5607: Task Init Failed\r\n", 26));
+        } else {
+            CALL(uartDev->write((uint8_t *) "MS5607: Initialized\r\n", 21));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "MS5607: Sensor Init Failed\r\n", 28));
     }
 
     CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
@@ -281,10 +320,6 @@ RetType sensorInitTask(void*) {
     RESET();
     return RET_ERROR;
 }
-
-
-
-
 
 /* USER CODE END 0 */
 
