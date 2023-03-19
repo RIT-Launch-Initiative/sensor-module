@@ -100,7 +100,7 @@ RetType i2cDevPollTask(void*) {
 RetType ledTask(void*) {
     RESUME();
 
-    RetType ret = CALL(led->toggle());
+    CALL(led->toggle());
 
     RESET();
     return RET_SUCCESS;
@@ -171,7 +171,7 @@ RetType lsmTask(void*) {
     }
 
     static char buffer[120];
-    size_t size = snprintf(buffer, 120, "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %d m/s^2\r\n\t\tY: %d m/s^2\r\n\t\tZ: %d m/s^2\r\n\tGyro: \r\n\t\tX: %d dps\r\n\t\tY: %d dps\r\n\t\tZ: %d dps\r\n", accX, accY, accZ, gyroX, gyroY, gyroZ);
+    size_t size = snprintf(buffer, 120, "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %ld m/s^2\r\n\t\tY: %ld m/s^2\r\n\t\tZ: %ld m/s^2\r\n\tGyro: \r\n\t\tX: %ld dps\r\n\t\tY: %ld dps\r\n\t\tZ: %ld dps\r\n", accX, accY, accZ, gyroX, gyroY, gyroZ);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
@@ -186,6 +186,10 @@ RetType lisTask(void*) {
     static float temp = 0;
 
     RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
+    if (ret != RET_SUCCESS) {
+        CALL(uartDev->write((uint8_t *) "LIS3MDL: Failed to get sensor data\r\n", 35));
+    }
+
     static char buffer[100];
     size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
@@ -356,10 +360,12 @@ int main(void) {
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
-    RetType uartRet = uart.init();
+    RetType ret = uart.init();
+    if (ret != RET_SUCCESS) {
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init UART Device. Exiting.\n\r", 38);
+        return -1;
+    }
     uartDev = &uart;
-
-    char uartBuffer[MAX_UART_BUFF_SIZE];
 
     if(!sched_init(&HAL_GetTick)) {
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init scheduler\n\r", 30);
@@ -368,7 +374,7 @@ int main(void) {
 
     // Initialize peripherals
     HALGPIODevice gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
-    RetType gpioRet = gpioDevice.init();
+    ret = gpioDevice.init();
     LED localLED(gpioDevice);
     led = &localLED;
 
