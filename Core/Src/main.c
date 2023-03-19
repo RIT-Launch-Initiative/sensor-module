@@ -1,6 +1,7 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
+  ******************************************************************************}}}}}
   * @file           : main.c
   * @brief          : Main program body
   ******************************************************************************
@@ -26,8 +27,8 @@
 #include <string.h>
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
-#include "device/platforms/stm32/HAL_UARTDevice.h"
-#include "device/platforms/stm32/HAL_SPIDevice.h"
+//#include "device/platforms/stm32/HAL_UARTDevice.h"
+//#include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
 
 
@@ -68,7 +69,8 @@ SPI_HandleTypeDef hspi2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+const char* ok = "OK\r\n";
+const char* fail = "FAILED\r\n";
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,10 +81,12 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-static HALUARTDevice *uart_dev = nullptr;
+//static HALUARTDevice *uart_dev = nullptr;
 static HALI2CDevice *i2c_dev = nullptr;
 //static HALSPIDevice *spi_dev = nullptr;
 
+static HALGPIODevice *gpio_led = nullptr;
+//static HALGPIODevice *gpio_mag = nullptr;
 static LED *led = nullptr;
 static LIS3MDL *mag = nullptr;
 //static LIS3MDL_SPI *mag_spi = nullptr;
@@ -122,7 +126,6 @@ RetType led_toggle_task(void*) {
 RetType i2c_device_poll(void*) {
 	RESUME();
 	CALL(i2c_dev->poll());
-	SLEEP(1);
 	RESET();
 	return RET_SUCCESS;
 }
@@ -143,7 +146,7 @@ RetType mag_task(void*) {
 	static float temp = 0;
 	static RetType status;
 
-	/*
+
 	// dummy read of i2c address
 	static uint8_t whoami = 0;
     I2CAddr_t mag_addr = {
@@ -159,10 +162,11 @@ RetType mag_task(void*) {
 	}
 /**/
 
-
 	status = CALL(mag->pullSensorData(&x, &y, &z, &temp));
+//	status = CALL(mag_spi->pullSensorData(&x, &y, &z, &temp));
+/*
 	if (status == RET_SUCCESS) {
-		print_uart("X: %f, Y: %f, Z: %f, T: %f\r\n", x, y, z, temp);
+		print_uart("X: %5.3f, Y: %5.3f, Z: %5.3f, T: %3.1f\r\n", x, y, z, temp);
 	} else {
 		print_uart("Failed to read data from mag\r\n");
 	}
@@ -180,9 +184,11 @@ RetType mag_init_task(void*) {
 	static tid_t mag_tid = -1;
 	static LIS3MDL mag_local(*i2c_dev);
 	mag = &mag_local;
+//	static LIS3MDL_SPI mag_spi_local(*spi_dev, *gpio_mag);
+//	mag_spi = &mag_spi_local;
 
 	// dummy read of i2c address
-/*
+
 	static uint8_t whoami = 0;
     I2CAddr_t mag_addr = {
             .dev_addr = 0x1C << 1,
@@ -197,18 +203,61 @@ RetType mag_init_task(void*) {
 	}
 /**/
 
-	status = CALL(mag->init());
+/*
+	const static uint32_t tmt = 0;
+	static uint8_t instruction = 0x20U | 0x80U | 0x40U;
+	static uint8_t controls[5];
+
+	CALL(gpio_mag->set(0));
+	CALL(spi_dev->write(&instruction, 1, tmt));
+	status = CALL(spi_dev->read(controls, 5, tmt));
+	CALL(gpio_mag->set(1));
+
 	if (status == RET_SUCCESS) {
+		print_uart("Magnetometer control registers before init: 0x");
+		for (int i = 0; i < 5; i++) {
+			print_uart("%02x", controls[i]);
+		}
+		print_uart("\n");
+	} else {
+		print_uart("Failed to read control registers from magnetometer\n");
+	}
+/**/
+
+	print_uart("Initailizing mag... ");
+	status = CALL(mag->init());
+//	status = CALL(mag_spi->init());
+
+	if (status == RET_SUCCESS) {
+		print_uart(ok);
+		print_uart("Starting mag task... ");
 		mag_tid = sched_start(mag_task, {});
 
 		if (mag_tid == -1) {
-			print_uart("Failed to start mag task\r\n");
+			print_uart(fail);
 		} else {
-			print_uart("Started mag task\r\n");
+			print_uart(ok);
 		}
 	} else {
-		print_uart("Failed to initialize mag\r\n");
+		print_uart(fail);
 	}
+
+/*
+	CALL(gpio_mag->set(0));
+	CALL(spi_dev->write(&instruction, 1, tmt));
+	status = CALL(spi_dev->read(controls, 5, tmt));
+	CALL(gpio_mag->set(1));
+
+	if (status == RET_SUCCESS) {
+		print_uart("Magnetometer control registers after init: 0x");
+		for (int i = 0; i < 5; i++) {
+			print_uart("%02x", controls[i]);
+		}
+		print_uart("\n");
+	} else {
+		print_uart("Failed to read control registers from magnetometer\n");
+	}
+/**/
 
 	RESET();
 	return RET_ERROR;
@@ -248,8 +297,6 @@ int main(void) {
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   	RetType status;
-  	const char* ok = "OK\r\n";
-  	const char* fail = "FAIL\r\n";
 	print_uart("Initializing scheduler: ");
 	if (sched_init(&HAL_GetTick)) {
 		print_uart(ok);
@@ -258,33 +305,49 @@ int main(void) {
 		return -1;
 	}
 
-  	print_uart("Initializing devices\r\n");
+  	print_uart("\r\nInitializing devices...\r\n");
+
   	// Initialize GPIO Device for LED
-	print_uart("Initializing LED GPIO device: ");
-	HALGPIODevice gpio_led("LED", GPIOA, GPIO_PIN_5);
-	status = gpio_led.init();
+	print_uart("Initializing LED GPIO device... ");
+	HALGPIODevice gpio_led_local("LED", GPIOA, GPIO_PIN_5);
+	status = gpio_led_local.init();
 	if (status == RET_SUCCESS) {
 		print_uart(ok);
-		LED led_local(gpio_led);
-		led = &led_local;
+		gpio_led = &gpio_led_local;
 	} else {
 		print_uart(fail);
 	}
 
-	// Initialize GPIO device
-	HALUARTDevice uart_local("UART", &huart2);
-	print_uart("Initializing UART device: ");
-	status = uart_local.init();
+	LED led_local(*gpio_led);
+	led = &led_local;
+
+/*
+	print_uart("Initializing magnetometer GPIO device... ");
+	HALGPIODevice gpio_mag_local("MAG", GPIOB, GPIO_PIN_6);
+	status = gpio_mag_local.init();
 	if (status == RET_SUCCESS) {
 		print_uart(ok);
-		uart_dev = &uart_local;
+		gpio_mag = &gpio_mag_local;
 	} else {
 		print_uart(fail);
 	}
+/**/
+
+
+	// Initialize UART device
+//	HALUARTDevice uart_local("UART", &huart2);
+//	print_uart("Initializing UART device... ");
+//	status = uart_local.init();
+//	if (status == RET_SUCCESS) {
+//		print_uart(ok);
+//		uart_dev = &uart_local;
+//	} else {
+//		print_uart(fail);
+//	}
 
 	// Initialize I2C device
 	HALI2CDevice i2c_local("I2C", &hi2c1);
-	print_uart("Initializing I2C device: ");
+	print_uart("Initializing I2C device... ");
 	status = i2c_local.init();
 	if (status == RET_SUCCESS) {
 		i2c_dev = &i2c_local;
@@ -294,17 +357,20 @@ int main(void) {
 	}
 
 	// Initialize SPI device
-//	HALSPIDevice spi_local("SPI", &hspi1);
-//	print_uart("Initializing SPI device: ");
-//	status = spi_local.init();
-//	if (status == RET_SUCCESS) {
-//		spi_dev = &spi_local;
-//		print_uart(ok);
-//	} else {
-//		print_uart(fail);
-//	}
+/*
+	HALSPIDevice spi_local("SPI", &hspi1);
+	print_uart("Initializing SPI device... ");
+	status = spi_local.init();
+	if (status == RET_SUCCESS) {
+		spi_dev = &spi_local;
+		print_uart(ok);
+	} else {
+		print_uart(fail);
+	}
+/**/
 
 	sched_start(i2c_device_poll, {});
+//	sched_start(spi_device_poll, {});
 	sched_start(mag_init_task, {});
 	sched_start(led_toggle_task, {});
 
