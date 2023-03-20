@@ -28,8 +28,8 @@
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 //#include "device/platforms/stm32/HAL_UARTDevice.h"
-//#include "device/platforms/stm32/HAL_SPIDevice.h"
-#include "device/platforms/stm32/HAL_I2CDevice.h"
+#include "device/platforms/stm32/HAL_SPIDevice.h"
+//#include "device/platforms/stm32/HAL_I2CDevice.h"
 
 
 #include "device/peripherals/LED/LED.h"
@@ -82,18 +82,20 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 //static HALUARTDevice *uart_dev = nullptr;
-static HALI2CDevice *i2c_dev = nullptr;
-//static HALSPIDevice *spi_dev = nullptr;
+//static HALI2CDevice *i2c_dev = nullptr;
+
+static HALSPIDevice *spi_dev = nullptr;
 
 static HALGPIODevice *gpio_led = nullptr;
-//static HALGPIODevice *gpio_mag = nullptr;
+static HALGPIODevice *gpio_mag = nullptr;
 static LED *led = nullptr;
-static LIS3MDL *mag = nullptr;
+//static LIS3MDL *mag = nullptr;
 //static LIS3MDL_SPI *mag_spi = nullptr;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
 int print_uart(const char* fmt, ...)
 {
 	char buf[UART_MAX_BUFF];
@@ -115,39 +117,26 @@ int print_uart(const char* fmt, ...)
 
 RetType led_toggle_task(void*) {
 	RESUME();
-
-	static bool on = false;
-	CALL(gpio_led->set(on ? 1 : 0));
-	on = !on;
-//	CALL(led->toggle());
-	SLEEP(10000);
+	CALL(led->toggle());
+	SLEEP(500);
 
 	RESET();
 	return RET_SUCCESS;
 }
 
-RetType gpio_device_poll(void*) {
-	RESUME();
-
-	CALL(gpio_led->poll());
-
-	RESET();
-	return RET_SUCCESS;
-}
-
-RetType i2c_device_poll(void*) {
-	RESUME();
-	CALL(i2c_dev->poll());
-	RESET();
-	return RET_SUCCESS;
-}
-
-//RetType spi_device_poll(void*) {
+//RetType i2c_device_poll(void*) {
 //	RESUME();
-//	CALL(spi_dev->poll());
+//	CALL(i2c_dev->poll());
 //	RESET();
 //	return RET_SUCCESS;
 //}
+
+RetType spi_device_poll(void*) {
+	RESUME();
+	CALL(spi_dev->poll());
+	RESET();
+	return RET_SUCCESS;
+}
 
 RetType mag_task(void*) {
 	RESUME();
@@ -159,6 +148,7 @@ RetType mag_task(void*) {
 	static RetType status;
 
 
+	/*
 	// dummy read of i2c address
 	static uint8_t whoami = 0;
     I2CAddr_t mag_addr = {
@@ -176,7 +166,7 @@ RetType mag_task(void*) {
 
 //	status = CALL(mag->pullSensorData(&x, &y, &z, &temp));
 //	status = CALL(mag_spi->pullSensorData(&x, &y, &z, &temp));
-/*
+
 	if (status == RET_SUCCESS) {
 		print_uart("X: %5.3f, Y: %5.3f, Z: %5.3f, T: %3.1f\r\n", x, y, z, temp);
 	} else {
@@ -189,18 +179,40 @@ RetType mag_task(void*) {
 	return RET_SUCCESS;
 }
 
+int report_hal(HAL_StatusTypeDef status) {
+        switch (status) {
+			case(HAL_OK):
+				print_uart("HAL OK... ");
+				return 0;
+				break;
+			case(HAL_BUSY):
+				print_uart("HAL BUSY... ");
+				return 1;
+				break;
+			case(HAL_TIMEOUT):
+				print_uart("HAL TIMEOUT... ");
+				return 1;
+				break;
+			case(HAL_ERROR):
+				print_uart("HAL ERROR... ");
+				return 1;
+				break;
+        }
+}
+
 
 RetType mag_init_task(void*) {
 	RESUME();
 	static RetType status;
-	static tid_t mag_tid = -1;
-	static LIS3MDL mag_local(*i2c_dev);
-	mag = &mag_local;
+//	static tid_t mag_tid = -1;
+//	static LIS3MDL mag_local(*i2c_dev);
+//	mag = &mag_local;
 //	static LIS3MDL_SPI mag_spi_local(*spi_dev, *gpio_mag);
 //	mag_spi = &mag_spi_local;
 
 	// dummy read of i2c address
 
+/*
 	static uint8_t whoami = 0;
     I2CAddr_t mag_addr = {
             .dev_addr = 0x1C << 1,
@@ -215,30 +227,70 @@ RetType mag_init_task(void*) {
 	}
 /**/
 
-/*
-	const static uint32_t tmt = 0;
-	static uint8_t instruction = 0x20U | 0x80U | 0x40U;
+//	print_uart("Reading control registers before init\r\n");
+	const static uint32_t tmt = 200;
+	static uint8_t instruction = 0x0FU | 0b1100000;
+	static uint8_t whoami = 0;
 	static uint8_t controls[5];
 
-	CALL(gpio_mag->set(0));
-	CALL(spi_dev->write(&instruction, 1, tmt));
-	status = CALL(spi_dev->read(controls, 5, tmt));
-	CALL(gpio_mag->set(1));
+//	print_uart("Setting gpio... ");
+//	status = CALL(gpio_mag->set(0));
+//	if (status == RET_SUCCESS) {
+//		print_uart(ok);
+//	} else {
+//		print_uart(fail);
+//	}
 
+//	print_uart("Writing to device... ");
+//	status = CALL(spi_dev->write(&instruction, 1, tmt));
+//	if (status == RET_SUCCESS) {
+//		print_uart(ok);
+//	} else {
+//		print_uart(fail);
+//	}
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+	HAL_Delay(300);
+
+	HAL_StatusTypeDef hal_status = HAL_SPI_Transmit(&hspi1, &instruction, 1, tmt);
+	report_hal(hal_status);
+	hal_status = HAL_SPI_Receive(&hspi1, &whoami, 1, tmt);
+	report_hal(hal_status);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+
+//	print_uart("Reading from device... ");
+//	status = CALL(spi_dev->read(&whoami, 1, tmt));
+//	if (status == RET_SUCCESS) {
+//		print_uart(ok);
+//	} else {
+//		print_uart(fail);
+//	}
+
+//	print_uart("Unsetting GPIO... ");
+//	status = CALL(gpio_mag->set(1));
+//	if (status == RET_SUCCESS) {
+//		print_uart(ok);
+//	} else {
+//		print_uart(fail);
+//	}
+
+	print_uart("WHOAMI: 0x%02x\r\n", whoami);
+
+/*
 	if (status == RET_SUCCESS) {
 		print_uart("Magnetometer control registers before init: 0x");
 		for (int i = 0; i < 5; i++) {
 			print_uart("%02x", controls[i]);
 		}
-		print_uart("\n");
+		print_uart("\r\n");
 	} else {
-		print_uart("Failed to read control registers from magnetometer\n");
+		print_uart("Failed to read control registers from magnetometer\r\n");
 	}
 /**/
 
-	print_uart("Initailizing mag... ");
-	status = CALL(mag->init());
-//	status = CALL(mag_spi->init());
+//	print_uart("Initailizing mag... ");
+//	status = CALL(mag->init());
+	/*
+	status = CALL(mag_spi->init());
 
 	if (status == RET_SUCCESS) {
 		print_uart(ok);
@@ -254,7 +306,7 @@ RetType mag_init_task(void*) {
 		print_uart(fail);
 	}
 
-/*
+
 	CALL(gpio_mag->set(0));
 	CALL(spi_dev->write(&instruction, 1, tmt));
 	status = CALL(spi_dev->read(controls, 5, tmt));
@@ -280,7 +332,8 @@ RetType mag_init_task(void*) {
   * @brief  The application entry point.
   * @retval int
   */
-int main(void) {
+int main(void)
+{
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -320,29 +373,17 @@ int main(void) {
   	print_uart("\r\nInitializing devices...\r\n");
 
   	// Initialize GPIO Device for LED
-	print_uart("Initializing LED GPIO device... ");
 	HALGPIODevice gpio_led_local("LED", GPIOA, GPIO_PIN_5);
-	status = gpio_led_local.init();
-	if (status == RET_SUCCESS) {
-		print_uart(ok);
-		gpio_led = &gpio_led_local;
-	} else {
-		print_uart(fail);
-	}
+	gpio_led = &gpio_led_local;
 
 	LED led_local(*gpio_led);
 	led = &led_local;
 
-/*
-	print_uart("Initializing magnetometer GPIO device... ");
+
+	// GPIO device for mag
 	HALGPIODevice gpio_mag_local("MAG", GPIOB, GPIO_PIN_6);
-	status = gpio_mag_local.init();
-	if (status == RET_SUCCESS) {
-		print_uart(ok);
-		gpio_mag = &gpio_mag_local;
-	} else {
-		print_uart(fail);
-	}
+	gpio_mag = &gpio_mag_local;
+	gpio_mag->set(0);
 /**/
 
 
@@ -358,18 +399,19 @@ int main(void) {
 //	}
 
 	// Initialize I2C device
-	HALI2CDevice i2c_local("I2C", &hi2c1);
-	print_uart("Initializing I2C device... ");
-	status = i2c_local.init();
-	if (status == RET_SUCCESS) {
-		i2c_dev = &i2c_local;
-		print_uart(ok);
-	} else {
-		print_uart(fail);
-	}
+//	HALI2CDevice i2c_local("I2C", &hi2c1);
+//	print_uart("Initializing I2C device... ");
+//	status = i2c_local.init();
+//	if (status == RET_SUCCESS) {
+//		i2c_dev = &i2c_local;
+//		print_uart(ok);
+//	} else {
+//		print_uart(fail);
+//	}
 
 	// Initialize SPI device
-/*
+
+
 	HALSPIDevice spi_local("SPI", &hspi1);
 	print_uart("Initializing SPI device... ");
 	status = spi_local.init();
@@ -381,11 +423,11 @@ int main(void) {
 	}
 /**/
 
-	sched_start(gpio_device_poll, {});
+//	sched_start(gpio_device_poll, {});
 //	sched_start(i2c_device_poll, {});
-//	sched_start(spi_device_poll, {});
-//	sched_start(mag_task, {});
-	sched_start(led_toggle_task, {});
+	sched_start(spi_device_poll, {});
+	sched_start(mag_init_task, {});
+//	sched_start(led_toggle_task, {});
 
   /* USER CODE END 2 */
 
@@ -396,6 +438,7 @@ int main(void) {
     	sched_dispatch();
 //    	HAL_Delay(500);
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
     }
   return 0;
@@ -406,38 +449,41 @@ int main(void) {
   * @brief System Clock Configuration
   * @retval None
   */
-void SystemClock_Config(void) {
-    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-    /** Configure the main internal regulator output voltage
-    */
-    __HAL_RCC_PWR_CLK_ENABLE();
-    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
-    /** Initializes the RCC Oscillators according to the specified parameters
-    * in the RCC_OscInitTypeDef structure.
-    */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-        Error_Handler();
-    }
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-    /** Initializes the CPU, AHB and APB buses clocks
-    */
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
-                                  | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
-    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
-    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
-        Error_Handler();
-    }
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /**
@@ -445,30 +491,32 @@ void SystemClock_Config(void) {
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void) {
+static void MX_I2C1_Init(void)
+{
 
-    /* USER CODE BEGIN I2C1_Init 0 */
+  /* USER CODE BEGIN I2C1_Init 0 */
 
-    /* USER CODE END I2C1_Init 0 */
+  /* USER CODE END I2C1_Init 0 */
 
-    /* USER CODE BEGIN I2C1_Init 1 */
+  /* USER CODE BEGIN I2C1_Init 1 */
 
-    /* USER CODE END I2C1_Init 1 */
-    hi2c1.Instance = I2C1;
-    hi2c1.Init.ClockSpeed = 100000;
-    hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-    hi2c1.Init.OwnAddress1 = 0;
-    hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-    hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c1.Init.OwnAddress2 = 0;
-    hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-    if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN I2C1_Init 2 */
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
 
-    /* USER CODE END I2C1_Init 2 */
+  /* USER CODE END I2C1_Init 2 */
 
 }
 
@@ -477,34 +525,36 @@ static void MX_I2C1_Init(void) {
   * @param None
   * @retval None
   */
-static void MX_SPI1_Init(void) {
+static void MX_SPI1_Init(void)
+{
 
-    /* USER CODE BEGIN SPI1_Init 0 */
+  /* USER CODE BEGIN SPI1_Init 0 */
 
-    /* USER CODE END SPI1_Init 0 */
+  /* USER CODE END SPI1_Init 0 */
 
-    /* USER CODE BEGIN SPI1_Init 1 */
+  /* USER CODE BEGIN SPI1_Init 1 */
 
-    /* USER CODE END SPI1_Init 1 */
-    /* SPI1 parameter configuration*/
-    hspi1.Instance = SPI1;
-    hspi1.Init.Mode = SPI_MODE_MASTER;
-    hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-    hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-    hspi1.Init.NSS = SPI_NSS_SOFT;
-    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-    hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    hspi1.Init.CRCPolynomial = 10;
-    if (HAL_SPI_Init(&hspi1) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN SPI1_Init 2 */
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
 
-    /* USER CODE END SPI1_Init 2 */
+  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -513,34 +563,36 @@ static void MX_SPI1_Init(void) {
   * @param None
   * @retval None
   */
-static void MX_SPI2_Init(void) {
+static void MX_SPI2_Init(void)
+{
 
-    /* USER CODE BEGIN SPI2_Init 0 */
+  /* USER CODE BEGIN SPI2_Init 0 */
 
-    /* USER CODE END SPI2_Init 0 */
+  /* USER CODE END SPI2_Init 0 */
 
-    /* USER CODE BEGIN SPI2_Init 1 */
+  /* USER CODE BEGIN SPI2_Init 1 */
 
-    /* USER CODE END SPI2_Init 1 */
-    /* SPI2 parameter configuration*/
-    hspi2.Instance = SPI2;
-    hspi2.Init.Mode = SPI_MODE_MASTER;
-    hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-    hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
-    hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
-    hspi2.Init.NSS = SPI_NSS_SOFT;
-    hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-    hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
-    hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
-    hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    hspi2.Init.CRCPolynomial = 10;
-    if (HAL_SPI_Init(&hspi2) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN SPI2_Init 2 */
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI2_Init 2 */
 
-    /* USER CODE END SPI2_Init 2 */
+  /* USER CODE END SPI2_Init 2 */
 
 }
 
@@ -549,29 +601,31 @@ static void MX_SPI2_Init(void) {
   * @param None
   * @retval None
   */
-static void MX_USART2_UART_Init(void) {
+static void MX_USART2_UART_Init(void)
+{
 
-    /* USER CODE BEGIN USART2_Init 0 */
+  /* USER CODE BEGIN USART2_Init 0 */
 
-    /* USER CODE END USART2_Init 0 */
+  /* USER CODE END USART2_Init 0 */
 
-    /* USER CODE BEGIN USART2_Init 1 */
+  /* USER CODE BEGIN USART2_Init 1 */
 
-    /* USER CODE END USART2_Init 1 */
-    huart2.Instance = USART2;
-    huart2.Init.BaudRate = 9600;
-    huart2.Init.WordLength = UART_WORDLENGTH_8B;
-    huart2.Init.StopBits = UART_STOPBITS_1;
-    huart2.Init.Parity = UART_PARITY_NONE;
-    huart2.Init.Mode = UART_MODE_TX_RX;
-    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart2) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN USART2_Init 2 */
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
 
-    /* USER CODE END USART2_Init 2 */
+  /* USER CODE END USART2_Init 2 */
 
 }
 
@@ -580,33 +634,24 @@ static void MX_USART2_UART_Init(void) {
   * @param None
   * @retval None
   */
-static void MX_GPIO_Init(void) {
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    /* GPIO Ports Clock Enable */
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
 
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
-
-    /*Configure GPIO pin : PA5 */
-    GPIO_InitStruct.Pin = GPIO_PIN_5;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    /*Configure GPIO pin : PB6 */
-    GPIO_InitStruct.Pin = GPIO_PIN_6;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  /*Configure GPIO pin : PB6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
@@ -618,14 +663,15 @@ static void MX_GPIO_Init(void) {
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-void Error_Handler(void) {
-    /* USER CODE BEGIN Error_Handler_Debug */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1) {
         HAL_UART_Transmit(&huart2, (uint8_t *) "Error\n\r", 7, 100);
     }
-    /* USER CODE END Error_Handler_Debug */
+  /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
