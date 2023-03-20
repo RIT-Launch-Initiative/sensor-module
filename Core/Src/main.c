@@ -116,8 +116,20 @@ int print_uart(const char* fmt, ...)
 RetType led_toggle_task(void*) {
 	RESUME();
 
-	CALL(led->toggle());
-	SLEEP(500);
+	static bool on = false;
+	CALL(gpio_led->set(on ? 1 : 0));
+	on = !on;
+//	CALL(led->toggle());
+	SLEEP(10000);
+
+	RESET();
+	return RET_SUCCESS;
+}
+
+RetType gpio_device_poll(void*) {
+	RESUME();
+
+	CALL(gpio_led->poll());
 
 	RESET();
 	return RET_SUCCESS;
@@ -162,7 +174,7 @@ RetType mag_task(void*) {
 	}
 /**/
 
-	status = CALL(mag->pullSensorData(&x, &y, &z, &temp));
+//	status = CALL(mag->pullSensorData(&x, &y, &z, &temp));
 //	status = CALL(mag_spi->pullSensorData(&x, &y, &z, &temp));
 /*
 	if (status == RET_SUCCESS) {
@@ -369,9 +381,10 @@ int main(void) {
 	}
 /**/
 
-	sched_start(i2c_device_poll, {});
+	sched_start(gpio_device_poll, {});
+//	sched_start(i2c_device_poll, {});
 //	sched_start(spi_device_poll, {});
-	sched_start(mag_init_task, {});
+//	sched_start(mag_task, {});
 	sched_start(led_toggle_task, {});
 
   /* USER CODE END 2 */
@@ -381,6 +394,7 @@ int main(void) {
 
     while (1) {
     	sched_dispatch();
+//    	HAL_Delay(500);
     /* USER CODE END WHILE */
     /* USER CODE BEGIN 3 */
     }
