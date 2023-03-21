@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "device/peripherals/BMP390/BMP3902.h"
 #include "device/peripherals/LED/LED.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
@@ -71,9 +70,9 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-static MS5607 *ms5607 = nullptr;
-static BMP3XX *bmp3XX = nullptr;
-static ADXL375 *adxl375 = nullptr;
+// static MS5607 *ms5607 = nullptr;
+// static BMP3XX *bmp3XX = nullptr;
+// static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
 static SHTC3 *shtc3 = nullptr;
 static LED *led = nullptr;
@@ -164,39 +163,39 @@ RetType sensorInitTask(void *) {
         }
     }
 
-    CALL(uartDev->write((uint8_t *)"LSM6DSL: Initializing\r\n", 23));
-    static LSM6DSL lsm(*i2cDev);
-    lsm6dsl = &lsm;
-    tid_t lsmTID = -1;
-    RetType lsm6dslRet = CALL(lsm6dsl->init());
-    if (lsm6dslRet != RET_ERROR) {
-        lsmTID = sched_start(lsmTask, {});
+    // CALL(uartDev->write((uint8_t *)"LSM6DSL: Initializing\r\n", 23));
+    // static LSM6DSL lsm(*i2cDev);
+    // lsm6dsl = &lsm;
+    // tid_t lsmTID = -1;
+    // RetType lsm6dslRet = CALL(lsm6dsl->init());
+    // if (lsm6dslRet != RET_ERROR) {
+    //     lsmTID = sched_start(lsmTask, {});
 
-        if (-1 == lsmTID) {
-            CALL(uartDev->write((uint8_t *)"LSM6DSL: Task Init Failed\r\n", 27));
-        } else {
-            CALL(uartDev->write((uint8_t *)"LSM6DSL: Initialized\r\n", 22));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *)"LSM6DSL: Sensor Init Failed\r\n", 29));
-    }
+    //     if (-1 == lsmTID) {
+    //         CALL(uartDev->write((uint8_t *)"LSM6DSL: Task Init Failed\r\n", 27));
+    //     } else {
+    //         CALL(uartDev->write((uint8_t *)"LSM6DSL: Initialized\r\n", 22));
+    //     }
+    // } else {
+    //     CALL(uartDev->write((uint8_t *)"LSM6DSL: Sensor Init Failed\r\n", 29));
+    // }
 
-    CALL(uartDev->write((uint8_t *)"MS5607: Initializing\r\n", 22));
-    static MS5607 ms5(*i2cDev);
-    ms5607 = &ms5;
-    tid_t ms5TID = -1;
-    RetType ms5Ret = CALL(ms5607->init());
-    if (ms5Ret != RET_ERROR) {
-        ms5TID = sched_start(ms5607Task, {});
+    // CALL(uartDev->write((uint8_t *)"MS5607: Initializing\r\n", 22));
+    // static MS5607 ms5(*i2cDev);
+    // ms5607 = &ms5;
+    // tid_t ms5TID = -1;
+    // RetType ms5Ret = CALL(ms5607->init());
+    // if (ms5Ret != RET_ERROR) {
+    //     ms5TID = sched_start(ms5607Task, {});
 
-        if (-1 == ms5TID) {
-            CALL(uartDev->write((uint8_t *)"MS5607: Task Init Failed\r\n", 26));
-        } else {
-            CALL(uartDev->write((uint8_t *)"MS5607: Initialized\r\n", 21));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *)"LED: Device Init Failed\r\n", 25));
-    }
+    //     if (-1 == ms5TID) {
+    //         CALL(uartDev->write((uint8_t *)"MS5607: Task Init Failed\r\n", 26));
+    //     } else {
+    //         CALL(uartDev->write((uint8_t *)"MS5607: Initialized\r\n", 21));
+    //     }
+    // } else {
+    //     CALL(uartDev->write((uint8_t *)"LED: Device Init Failed\r\n", 25));
+    // }
 
     //    CALL(uartDev->write((uint8_t *) "LIS: Initializing\r\n", 19));
     //    static LIS3MDL lis(*i2cDev);
