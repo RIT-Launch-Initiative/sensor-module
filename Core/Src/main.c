@@ -71,7 +71,9 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-static BMP390 *bmp390 = nullptr;
+static MS5607 *ms5607 = nullptr;
+static BMP3XX *bmp3XX = nullptr;
+static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
 static SHTC3 *shtc3 = nullptr;
 static LED *led = nullptr;
@@ -92,7 +94,7 @@ RetType i2cDevPollTask(void *) {
 RetType ledTask(void *) {
     RESUME();
 
-    RetType ret = CALL(led->toggle());
+    CALL(led->toggle());
 
     RESET();
     return RET_SUCCESS;
@@ -115,6 +117,10 @@ RetType lisTask(void *) {
     static float temp = 0;
 
     RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
+    if (ret != RET_SUCCESS) {
+        CALL(uartDev->write((uint8_t *)"LIS3MDL: Failed to get sensor data\r\n", 35));
+    }
+
     static char buffer[100];
     size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ, temp);
     CALL(uartDev->write((uint8_t *)buffer, size));
@@ -135,7 +141,7 @@ RetType shtTask(void *) {
 
     static char buffer[100];
     size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
-    CALL(uartDev->write((uint8_t *) buffer, size));
+    CALL(uartDev->write((uint8_t *)buffer, size));
 
     RESET();
     return RET_SUCCESS;
@@ -150,10 +156,43 @@ RetType sensorInitTask(void *) {
     tid_t ledTID = -1;
     if (ret != RET_ERROR) {
         ledTID = sched_start(ledTask, {});
+
         if (-1 == ledTID) {
             CALL(uartDev->write((uint8_t *)"LED: Task Init Failed\r\n", 23));
         } else {
             CALL(uartDev->write((uint8_t *)"LED: Initialized\r\n", 18));
+        }
+    }
+
+    CALL(uartDev->write((uint8_t *)"LSM6DSL: Initializing\r\n", 23));
+    static LSM6DSL lsm(*i2cDev);
+    lsm6dsl = &lsm;
+    tid_t lsmTID = -1;
+    RetType lsm6dslRet = CALL(lsm6dsl->init());
+    if (lsm6dslRet != RET_ERROR) {
+        lsmTID = sched_start(lsmTask, {});
+
+        if (-1 == lsmTID) {
+            CALL(uartDev->write((uint8_t *)"LSM6DSL: Task Init Failed\r\n", 27));
+        } else {
+            CALL(uartDev->write((uint8_t *)"LSM6DSL: Initialized\r\n", 22));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *)"LSM6DSL: Sensor Init Failed\r\n", 29));
+    }
+
+    CALL(uartDev->write((uint8_t *)"MS5607: Initializing\r\n", 22));
+    static MS5607 ms5(*i2cDev);
+    ms5607 = &ms5;
+    tid_t ms5TID = -1;
+    RetType ms5Ret = CALL(ms5607->init());
+    if (ms5Ret != RET_ERROR) {
+        ms5TID = sched_start(ms5607Task, {});
+
+        if (-1 == ms5TID) {
+            CALL(uartDev->write((uint8_t *)"MS5607: Task Init Failed\r\n", 26));
+        } else {
+            CALL(uartDev->write((uint8_t *)"MS5607: Initialized\r\n", 21));
         }
     } else {
         CALL(uartDev->write((uint8_t *)"LED: Device Init Failed\r\n", 25));
@@ -232,7 +271,11 @@ int main(void) {
     MX_SPI2_Init();
     /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart2);
-    RetType uartRet = uart.init();
+    RetType ret = uart.init();
+    if (ret != RET_SUCCESS) {
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *)"Failed to init UART Device. Exiting.\n\r", 38);
+        return -1;
+    }
     uartDev = &uart;
 
     char uartBuffer[MAX_UART_BUFF_SIZE];
@@ -245,7 +288,7 @@ int main(void) {
 
     // Initialize peripherals
     HALGPIODevice gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
-    RetType gpioRet = gpioDevice.init();
+    ret = gpioDevice.init();
     LED localLED(gpioDevice);
     led = &localLED;
 
@@ -474,6 +517,7 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+
 /* USER CODE END 4 */
 
 /**
