@@ -37,6 +37,7 @@
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
 #include "device/peripherals/LSM6DSL/LSM6DSL.h"
 #include "device/peripherals/MS5607/MS5607.h"
+#include "device/peripherals/TMP117/TMP117.h"
 
 #include "sched/macros/call.h"
 
@@ -85,7 +86,7 @@ static LSM6DSL *lsm6dsl = nullptr;
 static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
-
+static TMP117 *tmp117 = nullptr;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -119,6 +120,24 @@ RetType bmpTask(void*) {
     }
 
     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
+    CALL(uartDev->write((uint8_t *)buffer, size));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType tmpTask(void*) {
+    RESUME();
+    static char buffer[100];
+    static float temp = 0;
+
+    RetType ret = CALL(tmp117->readTempCelsius(&temp));
+    if (ret == RET_ERROR)
+    {
+        CALL(uartDev->write((uint8_t*)"Failed to get TMP data\r\n",9));
+    }
+    
+    size_t size = sprintf(buffer,"TMP Temperature: %f C\r\n", temp);
     CALL(uartDev->write((uint8_t *)buffer, size));
 
     RESET();
@@ -234,6 +253,24 @@ RetType sensorInitTask(void*) {
         } else {
             CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
+    }
+
+    
+    CALL(uartDev->write((uint8_t *) "TMP117: Initializing\r\n", 23));
+    static TMP117 tmp(*i2cDev);
+    tmp117 = &tmp;
+    tid_t tmpTID = -1;
+    RetType tmp3Ret = CALL(tmp117->init());
+    if (tmp3Ret != RET_ERROR){
+        tmpTID = sched_start(tmpTask, {});
+
+        if (-1 == tmpTID){
+            CALL(uartDev->write((uint8_t *) "TMP117: Task Init Failed\r\n", 27));
+        } else {
+            CALL(uartDev->write((uint8_t *) "TMP117: Initialized\r\n", 22));
+        }
+    } else {
+        CALL(uartDev->write((uint8_t *) "TMP117: Sensor Init Failed\r\n", 29));
     }
 
     CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
