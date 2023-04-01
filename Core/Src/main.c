@@ -164,14 +164,14 @@ RetType adxlTask(void*) {
     CALL(uartDev->write((uint8_t *)buffer, gSize));
     if(gCounter >= 30){
         moveFast = true;
-        // if(moveFast){
-        //     CALL(uartDev->write((uint8_t *) "G-Force Constant High\r\n", 23));
-        // }
+        if(moveFast){
+            CALL(uartDev->write((uint8_t *) "Boost Detected\r\n", 16));
+        }
     } else if(deceleration >= 30){
         moveFast = false;
-        // if(!moveFast){
-        //     CALL(uartDev->write((uint8_t *) "G-Force Constant Low\r\n", 22));
-        // }
+        if(!moveFast){
+            CALL(uartDev->write((uint8_t *) "Boost Halted\r\n", 14));
+        }
     }
 
     RESET();
