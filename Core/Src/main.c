@@ -133,12 +133,12 @@ RetType shtTask(void *) {
     static float temp = 0;
     static float humidity = 0;
 
-    RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));  // hanging here!!!
+    RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *)"SHT: Error\r\n", 12));
     }
 
-    static char buffer[100];
+    static char buffer[150];
     size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
     CALL(uartDev->write((uint8_t *)buffer, size));
 
