@@ -146,7 +146,7 @@ RetType adxlTask(void*) {
     }
 
     static char buffer[100];
-    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r", x, y, z);
+    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
 
     // Use below if you want to print the values in multiple lines
     // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
@@ -158,10 +158,21 @@ RetType adxlTask(void*) {
     adxl375->velocityFilter(&yFilterCoords);
     adxl375->velocityFilter(&zFilterCoords);
     
-    // CALL(uartDev->write((uint8_t *) buffer, size));
-    double g = adxl375->gIncremental(yFilterCoords.filterVar, &gCounter, &deceleration);
-    size_t gSize = snprintf(buffer, 100, "G's calculated : %.5f\r\n", g);
-    CALL(uartDev->write((uint8_t *)buffer, gSize));
+    CALL(uartDev->write((uint8_t *) buffer, size));
+
+    // X axis Gs
+    double gX = adxl375->gIncremental(&xFilterCoords);
+    // size_t gXSize = snprintf(buffer, 100, "G's calculated : %.5f\r\n", gX);
+
+    // Y axis Gs
+    double gY = adxl375->gIncremental(&yFilterCoords);
+    size_t gYSize = snprintf(buffer, 100, "G's calculated : %.5f\r\n", gY);
+
+    // Z axis Gs
+    double gZ = adxl375->gIncremental(&zFilterCoords);
+    // size_t gZSize = snprintf(buffer, 100, "G's calculated : %.5f\r\n", gZ);
+
+    CALL(uartDev->write((uint8_t *)buffer, gYSize));
     if(gCounter >= 30){
         moveFast = true;
         if(moveFast){
@@ -174,6 +185,18 @@ RetType adxlTask(void*) {
         }
     }
 
+    // Calibration
+    static float calXConst = adxl375->calibrateData(&xFilterCoords);
+    static float calYConst = adxl375->calibrateData(&yFilterCoords);
+    static float calZConst = adxl375->calibrateData(&zFilterCoords);
+
+    if(calXConst != 0 && calYConst != 0 && calZConst != 0){
+        float xActual = (float)x - calXConst;
+        float yActual  = (float)y - calYConst;
+        float zActual = (float)z - calZConst;
+        size_t calSize = snprintf(buffer, 100, "ADXL375 Calibration: x: %f, y: %f, z: %f\r\n", xActual, yActual, zActual);
+        CALL(uartDev->write((uint8_t *)buffer, calSize));
+    }
     RESET();
     return RET_SUCCESS;
 }
