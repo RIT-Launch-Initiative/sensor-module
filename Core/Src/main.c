@@ -78,7 +78,7 @@ static SHTC3 *shtc3 = nullptr;
 static LED *led = nullptr;
 HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
-
+static TMP117 *tmp117 = nullptr;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
