@@ -78,7 +78,7 @@ static SHTC3 *shtc3 = nullptr;
 static LED *led = nullptr;
 HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
-static TMP117 *tmp117 = nullptr;
+// static TMP117 *tmp117 = nullptr;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -133,7 +133,7 @@ RetType shtTask(void *) {
     static float temp = 0;
     static float humidity = 0;
 
-    RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));
+    RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));  // hanging here!!!
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *)"SHT: Error\r\n", 12));
     }
@@ -225,7 +225,7 @@ RetType sensorInitTask(void *) {
         if (-1 == shtTID) {
             CALL(uartDev->write((uint8_t *)"SHT: Task Init Failed\r\n", 23));
         } else {
-            CALL(uartDev->write((uint8_t *)"SHT: Initialized\r\n", 18));
+            CALL(uartDev->write((uint8_t *)"SHT: Initialized\r\n", 19));
         }
     } else {
         CALL(uartDev->write((uint8_t *)"SHT: Sensor Init Failed\r\n", 25));
