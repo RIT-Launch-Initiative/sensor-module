@@ -14,7 +14,7 @@ set(SIZE arm-none-eabi-size)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # project settings
-project(cmake-test C CXX ASM)
+project(sensor-module C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
 
@@ -53,7 +53,7 @@ include_directories(Core/Inc Drivers/STM32F4xx_HAL_Driver/Inc Drivers/STM32F4xx_
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32F446xx)
 
-file(GLOB_RECURSE SOURCES "Core/*.*" "Drivers/*.*" "launch-core/device/Device.cpp" "launch-core/sched/sched.cpp")
+file(GLOB_RECURSE SOURCES "Core/*.*" "Drivers/*.*" "extern/launch-core/device/Device.cpp" "extern/launch-core/sched/sched.cpp" "extern/launch-core/device/platforms/stm32/HAL_UART_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_I2C_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_SPI_Handlers.cpp")
 
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32F446RETX_FLASH.ld)
 
