@@ -85,6 +85,7 @@ static LIS3MDL *lis3mdl = nullptr;
 static LSM6DSL *lsm6dsl = nullptr;
 static SHTC3 *shtc3 = nullptr;
 static LED *led = nullptr;
+static HALUARTDevice *uartPrompt = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 static TMP117 *tmp117 = nullptr;
@@ -92,6 +93,18 @@ static TMP117 *tmp117 = nullptr;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+RetType promptTask(void *) {
+    RESUME();
+    static char buffer[100];
+
+    RetType ret = CALL(uartPrompt->read(buffer, 100));
+    if (ret != RET_SUCCESS) {
+        CALL(uartPrompt->write((uint8_t *) "Failed to get PROMPT data\n\r", 27);
+    }
+
+    
+}
+
 RetType i2cDevPollTask(void *) {
     RESUME();
     CALL(i2cDev->poll());
@@ -444,6 +457,19 @@ int main(void)
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
     HALUARTDevice
+    uart5("UART5", &huart5);
+    if (uart.init() != RET_SUCCESS) {
+        HAL_UART_Transmit_IT(&huart5, (uint8_t *) "Failed to init UART prompt Device. Exiting.\n\r", 45);
+        return -1;
+    }
+    uartPrompt = &uart5;
+
+    if (!sched_init(&HAL_GetTick)) {
+        HAL_UART_Transmit_IT(&huart5, (uint8_t *) "Failed to init scheduler\n\r", 30);
+        return -1;
+    }
+
+    HALUARTDevice
     uart("UART", &huart2);
     RetType ret = uart.init();
     if (ret != RET_SUCCESS) {
@@ -656,7 +682,7 @@ static void MX_UART5_Init(void)
 
   /* USER CODE END UART5_Init 1 */
   huart5.Instance = UART5;
-  huart5.Init.BaudRate = 115200;
+  huart5.Init.BaudRate = 9600;
   huart5.Init.WordLength = UART_WORDLENGTH_8B;
   huart5.Init.StopBits = UART_STOPBITS_1;
   huart5.Init.Parity = UART_PARITY_NONE;
