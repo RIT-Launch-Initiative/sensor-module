@@ -41,6 +41,7 @@
 #include "device/peripherals/TMP117/TMP117.h"
 #include "sched/macros/macros.h"
 #include "device/DeviceMap.h"
+#include "init/init.h"
 
 
 // #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -477,10 +478,24 @@ int main(void) {
     }
 
     i2cDev = &i2c;
-    sched_start(i2cDevPollTask, {});
-    sched_start(sensorInitTask, {});
 
-    DeviceMap deviceMap = SensorModuleDeviceMap(i2c, wiznetSPI, flashSPI, ledGPIO, ledGPIO, ledGPIO);
+    SensorModuleDeviceMap map(i2c, wiznetSPI, flashSPI, ledGPIO, ledGPIO, ledGPIO, uart);
+    if (RET_SUCCESS != map.init()) {
+        HAL_UART_Transmit(&huart2, (uint8_t *) "Failed to init SensorModuleDeviceMap. Exiting.\r\n", 47, 100);
+        return -1;
+    }
+    task_func_t tasks[12] = {ledTask, ms5607Task, bmpTask, adxlTask, lisTask, lsmTask, shtc3Task, tmpTask, i2cDevPollTask};
+
+    init_arg_t initArgs = {
+        .dev_map = &map,
+        .tasks = tasks,
+        .args = {},
+        .num_tasks = 9, // TODO: Increment for each new task
+    };
+
+    sched_start(init, static_cast<void*>(&initArgs));
+
+
 
     /* USER CODE END 2 */
 
