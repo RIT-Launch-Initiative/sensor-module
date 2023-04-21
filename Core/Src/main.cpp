@@ -24,9 +24,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "SensorModuleDeviceMap.h"
+
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_UARTDevice.h"
-// #include "device/platforms/stm32/HAL_SPIDevice.h"
+ #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/peripherals/LED/LED.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
 // #include "device/peripherals/W25Q/W25Q.h"
@@ -38,6 +40,7 @@
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
 #include "sched/macros/macros.h"
+#include "device/DeviceMap.h"
 
 
 // #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
@@ -450,9 +453,9 @@ int main(void) {
     }
 
     // Initialize peripherals
-    HALGPIODevice gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
-    ret = gpioDevice.init();
-    LED localLED(gpioDevice);
+    HALGPIODevice ledGPIO("LED GPIO", GPIOA, GPIO_PIN_5);
+    ret = ledGPIO.init();
+    LED localLED(ledGPIO);
     led = &localLED;
 
     static HALI2CDevice i2c("HAL I2C1", &hi2c1);
@@ -461,9 +464,24 @@ int main(void) {
         return -1;
     }
 
+    static HALSPIDevice wiznetSPI("Wiznet SPI", &hspi1);
+    if (wiznetSPI.init() != RET_SUCCESS) {
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
+        return -1;
+    }
+
+    static HALSPIDevice flashSPI("Flash SPI", &hspi2);
+    if (flashSPI.init() != RET_SUCCESS) {
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
+        return -1;
+    }
+
     i2cDev = &i2c;
     sched_start(i2cDevPollTask, {});
     sched_start(sensorInitTask, {});
+
+    DeviceMap deviceMap = SensorModuleDeviceMap(i2c, wiznetSPI, flashSPI, ledGPIO, ledGPIO, ledGPIO);
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
