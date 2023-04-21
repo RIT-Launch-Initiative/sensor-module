@@ -37,7 +37,8 @@
 #include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
-#include "sched/macros/call.h"
+#include "sched/macros/macros.h"
+
 
 // #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
@@ -99,7 +100,7 @@ static TMP117 *tmp117 = nullptr;
 RetType i2cDevPollTask(void *) {
     RESUME();
     CALL(i2cDev->poll());
-    RESET();
+
     return RET_SUCCESS;
 }
 
@@ -108,7 +109,6 @@ RetType ledTask(void *) {
 
     CALL(led->toggle());
 
-    RESET();
     return RET_SUCCESS;
 }
 
@@ -127,12 +127,12 @@ RetType bmpTask(void *) {
     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-    RESET();
     return RET_SUCCESS;
 }
 
 RetType tmpTask(void *) {
     RESUME();
+
     static char buffer[100];
     static float temp = 0;
 
@@ -144,7 +144,6 @@ RetType tmpTask(void *) {
     size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-    RESET();
     return RET_SUCCESS;
 }
 
@@ -168,7 +167,6 @@ RetType adxlTask(void *) {
 
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-    RESET();
     return RET_SUCCESS;
 }
 
@@ -199,7 +197,7 @@ RetType lsmTask(void *) {
                            accX, accY, accZ, gyroX, gyroY, gyroZ);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-    RESET();
+
     return RET_SUCCESS;
 }
 
@@ -220,7 +218,7 @@ RetType lisTask(void *) {
                            temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-    RESET();
+
     return RET_SUCCESS;
 }
 
@@ -242,7 +240,7 @@ RetType ms5607Task(void *) {
                           pressure, temperature, altitude);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-    RESET();
+
     return RET_SUCCESS;
 }
 
@@ -260,7 +258,7 @@ RetType shtc3Task(void *) {
     size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-    RESET();
+
     return RET_SUCCESS;
 }
 
@@ -282,8 +280,7 @@ RetType sensorInitTask(void *) {
     }
 
     CALL(uartDev->write((uint8_t *) "TMP117: Initializing\r\n", 23));
-    static TMP117 tmp(
-    *i2cDev);
+    static TMP117 tmp(*i2cDev);
     tmp117 = &tmp;
     tid_t tmpTID = -1;
     RetType tmp3Ret = CALL(tmp117->init());
@@ -300,8 +297,7 @@ RetType sensorInitTask(void *) {
     }
 
     CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
-    static LSM6DSL lsm(
-    *i2cDev);
+    static LSM6DSL lsm(*i2cDev);
     lsm6dsl = &lsm;
     tid_t lsmTID = -1;
     RetType lsm6dslRet = CALL(lsm6dsl->init());
@@ -318,8 +314,7 @@ RetType sensorInitTask(void *) {
     }
 
     CALL(uartDev->write((uint8_t *) "MS5607: Initializing\r\n", 22));
-    static MS5607 ms5(
-    *i2cDev);
+    static MS5607 ms5(*i2cDev);
     ms5607 = &ms5;
     tid_t ms5TID = -1;
     RetType ms5Ret = CALL(ms5607->init());
@@ -336,8 +331,7 @@ RetType sensorInitTask(void *) {
     }
 
     CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
-    static ADXL375 adxl(
-    *i2cDev);
+    static ADXL375 adxl(*i2cDev);
     adxl375 = &adxl;
     tid_t adxl375TID = -1;
     RetType adxl375Ret = CALL(adxl375->init());
@@ -354,8 +348,7 @@ RetType sensorInitTask(void *) {
     }
 
     CALL(uartDev->write((uint8_t *) "LIS3MDL: Initializing\r\n", 23));
-    static LIS3MDL lis(
-    *i2cDev);
+    static LIS3MDL lis(*i2cDev);
     lis3mdl = &lis;
     tid_t lisTID = -1;
     RetType lis3mdlRet = CALL(lis3mdl->init());
@@ -372,8 +365,7 @@ RetType sensorInitTask(void *) {
     }
 
     CALL(uartDev->write((uint8_t *) "BMP388: Initializing\r\n", 22));
-    static BMP3XX bmp(
-    *i2cDev);
+    static BMP3XX bmp(*i2cDev);
     bmp3XX = &bmp;
     tid_t bmpTID = -1;
     RetType bmp3Ret = CALL(bmp3XX->init());
@@ -390,8 +382,7 @@ RetType sensorInitTask(void *) {
     }
 
     CALL(uartDev->write((uint8_t *) "SHTC3: Initializing\r\n", 19));
-    static SHTC3 sht(
-    *i2cDev);
+    static SHTC3 sht(*i2cDev);
     shtc3 = &sht;
     tid_t shtTID = -1;
     RetType sht3mdlRet = CALL(shtc3->init());
@@ -407,7 +398,7 @@ RetType sensorInitTask(void *) {
         CALL(uartDev->write((uint8_t *) "SHT: Sensor Init Failed\r\n", 25));
     }
 
-    RESET();
+
     return RET_ERROR;
 }
 
@@ -445,8 +436,7 @@ int main(void) {
     MX_USART2_UART_Init();
     MX_SPI2_Init();
     /* USER CODE BEGIN 2 */
-    HALUARTDevice
-    uart("UART", &huart2);
+    HALUARTDevice uart("UART", &huart2);
     RetType ret = uart.init();
     if (ret != RET_SUCCESS) {
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init UART Device. Exiting.\n\r", 38);
@@ -460,14 +450,12 @@ int main(void) {
     }
 
     // Initialize peripherals
-    HALGPIODevice
-    gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
+    HALGPIODevice gpioDevice("LED GPIO", GPIOA, GPIO_PIN_5);
     ret = gpioDevice.init();
     LED localLED(gpioDevice);
     led = &localLED;
 
-    static HALI2CDevice i2c(
-    "HAL I2C1", &hi2c1);
+    static HALI2CDevice i2c("HAL I2C1", &hi2c1);
     if (i2c.init() != RET_SUCCESS) {
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
         return -1;
@@ -482,12 +470,29 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
 
     while (1) {
-        sched_dispatch();
+        task_t *dispatch = sched_select();
+
+        if (nullptr != dispatch) {
+            HAL_UART_Transmit(&huart2, (const uint8_t *) "Dispatching\n\r", 13, 100);
+
+            sched_dispatched = dispatch->tid;
+            sched_jump[sched_dispatched].index = 0;
+
+            RetType ret = dispatch->func(dispatch->arg);
+
+            if (RET_ERROR == ret) {
+                HAL_UART_Transmit(&huart2, (const uint8_t *) "Dispatch failed\n\r", 17, 100);
+            }
+        }
+
+
         HAL_Delay(50);
         /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */
     }
-    /* USER CODE END 3 */
+
+
+/* USER CODE END 3 */
 }
 
 /**
