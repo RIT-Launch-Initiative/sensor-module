@@ -70,7 +70,7 @@ SPI_HandleTypeDef hspi2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+SensorModuleDeviceMap *deviceMap;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -87,22 +87,13 @@ static void MX_USART2_UART_Init(void);
 static void MX_SPI2_Init(void);
 
 /* USER CODE BEGIN PFP */
-static MS5607 *ms5607 = nullptr;
-static BMP3XX *bmp3XX = nullptr;
-static ADXL375 *adxl375 = nullptr;
-static LIS3MDL *lis3mdl = nullptr;
-static LSM6DSL *lsm6dsl = nullptr;
-static SHTC3 *shtc3 = nullptr;
-static LED *led = nullptr;
-static HALUARTDevice *uartDev = nullptr;
-static HALI2CDevice *i2cDev = nullptr;
-static TMP117 *tmp117 = nullptr;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 RetType i2cDevPollTask(void *) {
     RESUME();
+    static auto *i2cDev = (I2CDevice *) deviceMap->get("i2c");
     CALL(i2cDev->poll());
 
     return RET_SUCCESS;
@@ -110,6 +101,7 @@ RetType i2cDevPollTask(void *) {
 
 RetType ledTask(void *) {
     RESUME();
+    static auto *led = (LED *) deviceMap->get("i2c");
 
     CALL(led->toggle());
 
@@ -118,12 +110,14 @@ RetType ledTask(void *) {
 
 RetType bmpTask(void *) {
     RESUME();
+    static auto *bmp3xx = (BMP3XX *) deviceMap->get("bmp3xx");
+    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
 
     static char buffer[100];
     static double pressure = 0;
     static double temperature = 0;
 
-    RetType ret = CALL(bmp3XX->getPressureAndTemp(&pressure, &temperature));
+    RetType ret = CALL(bmp3xx->getPressureAndTemp(&pressure, &temperature));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
     }
@@ -136,6 +130,8 @@ RetType bmpTask(void *) {
 
 RetType tmpTask(void *) {
     RESUME();
+    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
+    static auto *tmp117 = (TMP117 *) deviceMap->get("tmp117");
 
     static char buffer[100];
     static float temp = 0;
@@ -153,6 +149,9 @@ RetType tmpTask(void *) {
 
 RetType adxlTask(void *) {
     RESUME();
+    static auto *adxl375 = (ADXL375 *) deviceMap->get("adxl375");
+    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
+
     static int16_t x = 0;
     static int16_t y = 0;
     static int16_t z = 0;
@@ -176,6 +175,8 @@ RetType adxlTask(void *) {
 
 RetType lsmTask(void *) {
     RESUME();
+    static auto *lsm6dsl = (LSM6DSL *) deviceMap->get("lsm6dsl");
+    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
 
     static int32_t accX = 0;
     static int32_t accY = 0;
@@ -207,6 +208,9 @@ RetType lsmTask(void *) {
 
 RetType lisTask(void *) {
     RESUME();
+    static auto *lis3mdl = (LIS3MDL *) deviceMap->get("lis3mdl");
+    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
+
     static float magX = 0;
     static float magY = 0;
     static float magZ = 0;
@@ -228,6 +232,8 @@ RetType lisTask(void *) {
 
 RetType ms5607Task(void *) {
     RESUME();
+    static auto *ms5607 = (MS5607 *) deviceMap->get("ms5607");
+    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
 
     static float pressure = 0;
     static float temperature = 0;
@@ -250,6 +256,9 @@ RetType ms5607Task(void *) {
 
 RetType shtc3Task(void *) {
     RESUME();
+    static auto *shtc3 = (SHTC3 *) deviceMap->get("shtc3");
+    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
+
     static float temp = 0;
     static float humidity = 0;
 
@@ -264,146 +273,6 @@ RetType shtc3Task(void *) {
 
 
     return RET_SUCCESS;
-}
-
-RetType sensorInitTask(void *) {
-    RESUME();
-
-    // TODO: LED is not a sensor but here for testing purposes
-    CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
-    RetType ret = CALL(led->init());
-    tid_t ledTID = -1;
-    if (ret != RET_ERROR) {
-        ledTID = sched_start(ledTask, {});
-
-        if (-1 == ledTID) {
-            CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
-        } else {
-            CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
-        }
-    }
-
-    CALL(uartDev->write((uint8_t *) "TMP117: Initializing\r\n", 23));
-    static TMP117 tmp(*i2cDev);
-    tmp117 = &tmp;
-    tid_t tmpTID = -1;
-    RetType tmp3Ret = CALL(tmp117->init());
-    if (tmp3Ret != RET_ERROR) {
-        tmpTID = sched_start(tmpTask, {});
-
-        if (-1 == tmpTID) {
-            CALL(uartDev->write((uint8_t *) "TMP117: Task Init Failed\r\n", 27));
-        } else {
-            CALL(uartDev->write((uint8_t *) "TMP117: Initialized\r\n", 22));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "TMP117: Sensor Init Failed\r\n", 29));
-    }
-
-    CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
-    static LSM6DSL lsm(*i2cDev);
-    lsm6dsl = &lsm;
-    tid_t lsmTID = -1;
-    RetType lsm6dslRet = CALL(lsm6dsl->init());
-    if (lsm6dslRet != RET_ERROR) {
-        lsmTID = sched_start(lsmTask, {});
-
-        if (-1 == lsmTID) {
-            CALL(uartDev->write((uint8_t *) "LSM6DSL: Task Init Failed\r\n", 27));
-        } else {
-            CALL(uartDev->write((uint8_t *) "LSM6DSL: Initialized\r\n", 22));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "LSM6DSL: Sensor Init Failed\r\n", 29));
-    }
-
-    CALL(uartDev->write((uint8_t *) "MS5607: Initializing\r\n", 22));
-    static MS5607 ms5(*i2cDev);
-    ms5607 = &ms5;
-    tid_t ms5TID = -1;
-    RetType ms5Ret = CALL(ms5607->init());
-    if (ms5Ret != RET_ERROR) {
-        ms5TID = sched_start(ms5607Task, {});
-
-        if (-1 == ms5TID) {
-            CALL(uartDev->write((uint8_t *) "MS5607: Task Init Failed\r\n", 26));
-        } else {
-            CALL(uartDev->write((uint8_t *) "MS5607: Initialized\r\n", 21));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "MS5607: Sensor Init Failed\r\n", 28));
-    }
-
-    CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
-    static ADXL375 adxl(*i2cDev);
-    adxl375 = &adxl;
-    tid_t adxl375TID = -1;
-    RetType adxl375Ret = CALL(adxl375->init());
-    if (adxl375Ret != RET_ERROR) {
-        adxl375TID = sched_start(adxlTask, {});
-
-        if (-1 == adxl375TID) {
-            CALL(uartDev->write((uint8_t *) "ADXL375: Task Init Failed\r\n", 27));
-        } else {
-            CALL(uartDev->write((uint8_t *) "ADXL375: Initialized\r\n", 22));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "ADXL375: Sensor Init Failed\r\n", 29));
-    }
-
-    CALL(uartDev->write((uint8_t *) "LIS3MDL: Initializing\r\n", 23));
-    static LIS3MDL lis(*i2cDev);
-    lis3mdl = &lis;
-    tid_t lisTID = -1;
-    RetType lis3mdlRet = CALL(lis3mdl->init());
-    if (lis3mdlRet != RET_ERROR) {
-        lisTID = sched_start(lisTask, {});
-
-        if (-1 == lisTID) {
-            CALL(uartDev->write((uint8_t *) "LIS3MDL: Task Init Failed\r\n", 27));
-        } else {
-            CALL(uartDev->write((uint8_t *) "LIS3MDL: Initialized\r\n", 22));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "LIS3MDL: Sensor Init Failed\r\n", 29));
-    }
-
-    CALL(uartDev->write((uint8_t *) "BMP388: Initializing\r\n", 22));
-    static BMP3XX bmp(*i2cDev);
-    bmp3XX = &bmp;
-    tid_t bmpTID = -1;
-    RetType bmp3Ret = CALL(bmp3XX->init());
-    if (bmp3Ret != RET_ERROR) {
-        bmpTID = sched_start(bmpTask, {});
-
-        if (-1 == bmpTID) {
-            CALL(uartDev->write((uint8_t *) "BMP388: Task Init Failed\r\n", 26));
-        } else {
-            CALL(uartDev->write((uint8_t *) "BMP388: Initialized\r\n", 21));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "BMP388: Sensor Init Failed\r\n", 28));
-    }
-
-    CALL(uartDev->write((uint8_t *) "SHTC3: Initializing\r\n", 19));
-    static SHTC3 sht(*i2cDev);
-    shtc3 = &sht;
-    tid_t shtTID = -1;
-    RetType sht3mdlRet = CALL(shtc3->init());
-    if (sht3mdlRet != RET_ERROR) {
-        shtTID = sched_start(shtc3Task, {});
-
-        if (-1 == shtTID) {
-            CALL(uartDev->write((uint8_t *) "SHT: Task Init Failed\r\n", 23));
-        } else {
-            CALL(uartDev->write((uint8_t *) "SHT: Initialized\r\n", 19));
-        }
-    } else {
-        CALL(uartDev->write((uint8_t *) "SHT: Sensor Init Failed\r\n", 25));
-    }
-
-
-    return RET_ERROR;
 }
 
 /* USER CODE END 0 */
@@ -440,13 +309,6 @@ int main(void) {
     MX_USART2_UART_Init();
     MX_SPI2_Init();
     /* USER CODE BEGIN 2 */
-    HALUARTDevice uart("UART", &huart2);
-    RetType ret = uart.init();
-    if (ret != RET_SUCCESS) {
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init UART Device. Exiting.\n\r", 38);
-        return -1;
-    }
-    uartDev = &uart;
 
     if (!sched_init(&HAL_GetTick)) {
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init scheduler\n\r", 30);
@@ -454,36 +316,23 @@ int main(void) {
     }
 
     // Initialize peripherals
+    HALUARTDevice uart("UART", &huart2);
+    HALI2CDevice i2c("HAL I2C1", &hi2c1);
+
     HALGPIODevice ledGPIO("LED GPIO", GPIOA, GPIO_PIN_5);
-    ret = ledGPIO.init();
     LED localLED(ledGPIO);
-    led = &localLED;
 
-    static HALI2CDevice i2c("HAL I2C1", &hi2c1);
-    if (i2c.init() != RET_SUCCESS) {
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
-        return -1;
-    }
+    HALSPIDevice wiznetSPI("Wiznet SPI", &hspi1);
+    HALSPIDevice flashSPI("Flash SPI", &hspi2);
 
-    static HALSPIDevice wiznetSPI("Wiznet SPI", &hspi1);
-    if (wiznetSPI.init() != RET_SUCCESS) {
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
-        return -1;
-    }
-
-    static HALSPIDevice flashSPI("Flash SPI", &hspi2);
-    if (flashSPI.init() != RET_SUCCESS) {
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
-        return -1;
-    }
-
-    i2cDev = &i2c;
-
+    // TODO: Replace with actual GPIO when CS is put in
     SensorModuleDeviceMap map(i2c, wiznetSPI, flashSPI, ledGPIO, ledGPIO, ledGPIO, uart);
+    deviceMap = &map;
     if (RET_SUCCESS != map.init()) {
-        HAL_UART_Transmit(&huart2, (uint8_t *) "Failed to init SensorModuleDeviceMap. Exiting.\r\n", 47, 100);
+        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init SensorModuleDeviceMap. Exiting.\r\n", 47);
         return -1;
     }
+
     task_func_t tasks[12] = {ledTask, ms5607Task, bmpTask, adxlTask, lisTask, lsmTask, shtc3Task, tmpTask, i2cDevPollTask};
 
     init_arg_t initArgs = {
@@ -494,9 +343,6 @@ int main(void) {
     };
 
     sched_start(init, static_cast<void*>(&initArgs));
-
-
-
     /* USER CODE END 2 */
 
     /* Infinite loop */
