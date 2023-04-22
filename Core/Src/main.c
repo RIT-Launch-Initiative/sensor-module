@@ -135,7 +135,7 @@ RetType adxlTask(void*) {
     static int gCounter = 0;
     static int deceleration = 0;
 
-    static ADXL375_VELOCITY_FILTER_T xFilterCoords;
+    static   xFilterCoords;
     static ADXL375_VELOCITY_FILTER_T yFilterCoords;
     static ADXL375_VELOCITY_FILTER_T zFilterCoords;
 
