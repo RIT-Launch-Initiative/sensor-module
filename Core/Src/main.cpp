@@ -91,14 +91,6 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-RetType i2cDevPollTask(void *) {
-    RESUME();
-    static auto *i2cDev = (I2CDevice *) deviceMap->get("i2c");
-    CALL(i2cDev->poll());
-
-    return RET_SUCCESS;
-}
-
 RetType ledTask(void *) {
     RESUME();
     static auto *led = (LED *) deviceMap->get("i2c");
@@ -258,7 +250,7 @@ RetType shtc3Task(void *) {
     RESUME();
     static auto *shtc3 = (SHTC3 *) deviceMap->get("shtc3");
     static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
-
+    CALL(uartDev->write((uint8_t *) "SHTC3: Started\r\n", 16));
     static float temp = 0;
     static float humidity = 0;
 
@@ -329,17 +321,17 @@ int main(void) {
     SensorModuleDeviceMap map(i2c, wiznetSPI, flashSPI, ledGPIO, ledGPIO, ledGPIO, uart);
     deviceMap = &map;
     if (RET_SUCCESS != map.init()) {
-        HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init SensorModuleDeviceMap. Exiting.\r\n", 47);
+        HAL_UART_Transmit(&huart2, (uint8_t *) "Failed to init SensorModuleDeviceMap. Exiting.\r\n", 47, 1000);
         return -1;
     }
 
-    task_func_t tasks[12] = {ledTask, ms5607Task, bmpTask, adxlTask, lisTask, lsmTask, shtc3Task, tmpTask, i2cDevPollTask};
+    task_func_t tasks[12] = {ledTask, ms5607Task, bmpTask, adxlTask, lisTask, lsmTask, shtc3Task, tmpTask};
 
     init_arg_t initArgs = {
-        .dev_map = &map,
+        .dev_map = deviceMap,
         .tasks = tasks,
         .args = {},
-        .num_tasks = 9, // TODO: Increment for each new task
+        .num_tasks = 8, // TODO: Increment for each new task
     };
 
     sched_start(init, static_cast<void*>(&initArgs));
@@ -363,7 +355,6 @@ int main(void) {
                 HAL_UART_Transmit(&huart2, (const uint8_t *) "Dispatch failed\n\r", 17, 100);
             }
         }
-
 
         HAL_Delay(50);
         /* USER CODE END WHILE */

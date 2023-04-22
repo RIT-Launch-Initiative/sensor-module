@@ -18,7 +18,7 @@
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
 
-static const size_t MAP_SIZE = 12;
+static const size_t MAP_SIZE = 15;
 
 class SensorModuleDeviceMap : public alloc::DeviceMap<MAP_SIZE> {
 public:
@@ -33,7 +33,7 @@ public:
                             flashSPI(flashSPI), flashCS(flashCS),
                             ledGPIO(ledGPIO), debugUART(uart) {};
 
-    /// @brief initialize the Linux platform specific map
+    /// @brief initialize the Sensor Module specific map
     RetType init() {
         // RET_SUCCESS is a 0
         int ret = add("i2c", &i2cDevice);
