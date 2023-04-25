@@ -66,6 +66,12 @@ UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+typedef struct promptData {
+    float counter;
+    float pressure;
+    float tubeTemp;
+    float dieTemp;
+} promptData_t;
 
 /* USER CODE END PV */
 
@@ -97,12 +103,26 @@ RetType promptTask(void *) {
     RESUME();
     static char buffer[100];
 
+
     RetType ret = CALL(uartPrompt->read(buffer, 100));
     if (ret != RET_SUCCESS) {
         CALL(uartPrompt->write((uint8_t *) "Failed to get PROMPT data\n\r", 27);
+        
+    }
+    if (buffer[0] != 'P') {
+        return RET_ERROR;   // Not prompt data
+    }
+    for (int i = 0; i < 100; i = i++) {
+        if (buffer[i] == ',') {
+            int j = i;
+            for (j < 100; j++) {
+                if (buffer[j] == ',') {
+                    
+                }
+            }
+        }
     }
 
-    
 }
 
 RetType i2cDevPollTask(void *) {
