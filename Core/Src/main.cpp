@@ -102,27 +102,45 @@ static TMP117 *tmp117 = nullptr;
 RetType promptTask(void *) {
     RESUME();
     static char buffer[100];
+    promptData_t pData;
 
-
-    RetType ret = CALL(uartPrompt->read(buffer, 100));
+    RetType ret = CALL(uartPrompt->read(*buffer, 100));
     if (ret != RET_SUCCESS) {
         CALL(uartPrompt->write((uint8_t *) "Failed to get PROMPT data\n\r", 27);
-        
+        RESET();
+        return ret;
     }
     if (buffer[0] != 'P') {
         return RET_ERROR;   // Not prompt data
     }
-    for (int i = 0; i < 100; i = i++) {
-        if (buffer[i] == ',') {
-            int j = i;
-            for (j < 100; j++) {
-                if (buffer[j] == ',') {
-                    
+    for (int l = 0; l < 4; l++) {
+        int buffSize = sizeof(buffer)/sizeof(buffer[0]);
+        char* str = "";      
+        for (int i = 0; i < buffSize; i = i++) {
+            if (buffer[i] == ',') {
+                int j = i;
+                for (j < buffSize; j++) {
+                    if (buffer[j] == ',') {
+                        for int (k = buffer[i+1], k < j-1, k++) {
+                            str + buffer[k];
+                        }                    
+                    }
+                    if (l == 0) {
+                        pData.counter = atof(str);
+                    } else if (l == 1) {
+                        pData.pressure = atof(str);
+                    } else if (l == 2) {
+                        pData.tubeTemp = atof(str);
+                    } else {
+                        pData.dieTemp = atof(str);
+                    }
+                    break;
                 }
+            } else if (buffer[i] == "\n") {
+                break;
             }
         }
     }
-
 }
 
 RetType i2cDevPollTask(void *) {
