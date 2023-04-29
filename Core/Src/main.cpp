@@ -37,6 +37,12 @@
 #include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
+#include "device/peripherals/W5500/W5500.h"
+
+#include "net/packet/Packet.h"
+#include "net/stack/IPv4UDP/IPv4UDPStack.h"
+#include "net/stack/IPv4UDP/IPv4UDPSocket.h"
+
 #include "sched/macros/call.h"
 
 // #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
