@@ -104,7 +104,6 @@ static HALGPIODevice *wizCS = nullptr;
 static HALSPIDevice *flashSPI = nullptr;
 static TMP117 *tmp117 = nullptr;
 
-static IPv4UDPSocket *socket = nullptr;
 static W5500 *w5500 = nullptr;
 static IPv4UDPStack *stack = nullptr;
 static IPv4UDPSocket *sock = nullptr;
@@ -116,6 +115,14 @@ static IPv4UDPSocket *sock = nullptr;
 RetType i2cDevPollTask(void *) {
     RESUME();
     CALL(i2cDev->poll());
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType spiDevPollTask(void *) {
+    RESUME();
+    CALL(wizSPI->poll());
+//    CALL(flashSPI->poll());
     RESET();
     return RET_SUCCESS;
 }
@@ -150,18 +157,36 @@ RetType bmpTask(void *) {
     return RET_SUCCESS;
 }
 
+typedef struct {
+    uint16_t id;
+    float temp;
+} tmp_data_t;
+
 RetType tmpTask(void *) {
     RESUME();
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 69;
+    addr.port = 8000;
+
     static char buffer[100];
     static float temp = 0;
+    static tmp_data_t data = {6969, 0};
 
-    RetType ret = CALL(tmp117->readTempCelsius(&temp));
+    RetType ret = CALL(tmp117->readTempCelsius(&data.temp));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "Failed to get TMP data\r\n", 9));
     }
 
-    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", temp);
+    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
+
+    Packet packet = alloc::Packet<32, 0>();
+    packet.push<tmp_data_t>(data);
+
+    sock->send(packet.read_ptr<uint8_t>(), packet.size(), &addr);
 
     RESET();
     return RET_SUCCESS;
@@ -283,50 +308,7 @@ RetType shtc3Task(void *) {
     return RET_SUCCESS;
 }
 
-RetType netStackInitTask(void *) {
-    RESUME();
 
-    static W5500 wiznet(*wizSPI, *wizCS);
-    w5500 = &wiznet;
-
-    static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
-                              255, 255, 255, 0,
-                              *w5500};
-    stack = &iPv4UdpStack;
-
-    static uint8_t ip_addr[4] = {192, 168, 1, 10};
-    static uint8_t subnet_mask[4] = {255, 255, 255, 0};
-    static uint8_t gateway_addr[4] = {192, 168, 1, 1};
-    static uint8_t mac_addr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    static IPv4UDPSocket::addr_t addr;
-
-    sock = stack->get_socket();
-    addr.ip[0] = addr.ip[1] = addr.ip[2] = addr.ip[3] = 0;
-    addr.port = 8000;
-    sock->bind(addr); // TODO: Error handling
-
-    ipv4::IPv4Addr_t temp_addr;
-    ipv4::IPv4Address(10, 10, 10, 69, &temp_addr);
-    stack->add_multicast(temp_addr);
-
-    CALL(uartDev->write((uint8_t *) "W5500: Initializing\r\n", 23));
-    RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
-    if (ret != RET_SUCCESS) {
-        CALL(uartDev->write((uint8_t *) "W5500: Failed to initialize\r\n", 29));
-        goto netStackInitDone;
-    }
-
-    CALL(uartDev->write((uint8_t *) "W5500: Initialized\r\n", 20));
-
-    if (RET_SUCCESS != stack->init()) {
-        CALL(uartDev->write((uint8_t *) "Failed to initialize network stack\r\n", 35));
-        goto netStackInitDone;
-    }
-
-    netStackInitDone:
-    RESET();
-    return RET_ERROR; // Kill task
-}
 
 RetType sensorInitTask(void *) {
     RESUME();
@@ -470,6 +452,54 @@ RetType sensorInitTask(void *) {
     return RET_ERROR;
 }
 
+RetType netStackInitTask(void *) {
+    RESUME();
+
+    static W5500 wiznet(*wizSPI, *wizCS);
+    w5500 = &wiznet;
+
+    static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
+                              255, 255, 255, 0,
+                              *w5500};
+    stack = &iPv4UdpStack;
+
+    static uint8_t ip_addr[4] = {192, 168, 1, 10};
+    static uint8_t subnet_mask[4] = {255, 255, 255, 0};
+    static uint8_t gateway_addr[4] = {192, 168, 1, 1};
+    static uint8_t mac_addr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    static IPv4UDPSocket::addr_t addr;
+
+    sock = stack->get_socket();
+    addr.ip[0] = addr.ip[1] = addr.ip[2] = addr.ip[3] = 0;
+    addr.port = 8000;
+    sock->bind(addr); // TODO: Error handling
+
+    ipv4::IPv4Addr_t temp_addr;
+    ipv4::IPv4Address(10, 10, 10, 69, &temp_addr);
+    stack->add_multicast(temp_addr);
+
+    CALL(uartDev->write((uint8_t *) "W5500: Initializing\r\n", 23));
+    RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
+    if (ret != RET_SUCCESS) {
+        CALL(uartDev->write((uint8_t *) "W5500: Failed to initialize\r\n", 29));
+        goto netStackInitDone;
+    }
+
+    CALL(uartDev->write((uint8_t *) "W5500: Initialized\r\n", 20));
+
+    if (RET_SUCCESS != stack->init()) {
+        CALL(uartDev->write((uint8_t *) "Failed to initialize network stack\r\n", 35));
+        goto netStackInitDone;
+    }
+
+    sched_start(sensorInitTask, {});
+
+
+    netStackInitDone:
+    RESET();
+    return RET_ERROR; // Kill task
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -547,7 +577,8 @@ int main(void) {
 
     i2cDev = &i2c;
     sched_start(i2cDevPollTask, {});
-    sched_start(sensorInitTask, {});
+    sched_start(spiDevPollTask, {});
+    sched_start(netStackInitTask, {});
     /* USER CODE END 2 */
 
     /* Infinite loop */
