@@ -98,6 +98,9 @@ static LED *led = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 static TMP117 *tmp117 = nullptr;
+
+static IPv4UDPSocket *socket = nullptr;
+static W5500 *w5500 = nullptr;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
