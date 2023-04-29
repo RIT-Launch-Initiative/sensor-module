@@ -101,6 +101,9 @@ static TMP117 *tmp117 = nullptr;
 
 static IPv4UDPSocket *socket = nullptr;
 static W5500 *w5500 = nullptr;
+static IPv4UDPStack *stack = nullptr;
+static IPv4UDPSocket *sock = nullptr;
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
