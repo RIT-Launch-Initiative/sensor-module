@@ -26,7 +26,7 @@
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_UARTDevice.h"
-// #include "device/platforms/stm32/HAL_SPIDevice.h"
+#include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/peripherals/LED/LED.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
 // #include "device/peripherals/W25Q/W25Q.h"
@@ -44,7 +44,7 @@
 #include "net/stack/IPv4UDP/IPv4UDPSocket.h"
 
 #include "sched/macros/call.h"
-#include "device/platforms/stm32/HAL_SPIDevice.h"
+
 
 // #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
@@ -94,6 +94,7 @@ static BMP3XX *bmp3XX = nullptr;
 static ADXL375 *adxl375 = nullptr;
 static LIS3MDL *lis3mdl = nullptr;
 static LSM6DSL *lsm6dsl = nullptr;
+static TMP117 *tmp117 = nullptr;
 static SHTC3 *shtc3 = nullptr;
 static LED *ledOne = nullptr;
 static LED *ledTwo = nullptr;
@@ -102,7 +103,6 @@ static HALI2CDevice *i2cDev = nullptr;
 static HALSPIDevice *wizSPI = nullptr;
 static HALGPIODevice *wizCS = nullptr;
 static HALSPIDevice *flashSPI = nullptr;
-static TMP117 *tmp117 = nullptr;
 
 static W5500 *w5500 = nullptr;
 static IPv4UDPStack *stack = nullptr;
@@ -571,7 +571,7 @@ int main(void) {
         return -1;
     }
 
-    static HALSPIDevice wizSpi("WIZNET SPI", &hspi1);
+    static HALSPIDevice wizSpi("WIZNET SPI", &hspi2);
     ret = wizSpi.init();
     wizSPI = &wizSpi;
 
