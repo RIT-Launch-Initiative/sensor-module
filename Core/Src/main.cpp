@@ -98,6 +98,7 @@ static TMP117 *tmp117 = nullptr;
 static SHTC3 *shtc3 = nullptr;
 static LED *ledOne = nullptr;
 static LED *ledTwo = nullptr;
+static LED *wizLED = nullptr;
 static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 static HALSPIDevice *wizSPI = nullptr;
@@ -132,7 +133,7 @@ RetType ledTask(void *) {
 
     CALL(ledOne->toggle());
     CALL(ledTwo->toggle());
-
+    CALL(wizLED->toggle());
 
     RESET();
     return RET_SUCCESS;
@@ -561,9 +562,16 @@ int main(void) {
     ledOneLocal.setState(LED_OFF);
     ledTwo = &ledTwoLocal;
 
+    HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
+    ret = ledOneGPIO.init();
+    LED wiznetLED(wiznetLEDGPIO);
+    wiznetLED.setState(LED_ON);
+    wizLED = &wiznetLED;
+
     HALGPIODevice wizChipSelect("Wiznet CS", ETH_CS_GPIO_Port, ETH_CS_Pin);
     ret = wizChipSelect.init();
     wizCS = &wizChipSelect;
+    wizChipSelect.set(1);
 
     static HALI2CDevice i2c("HAL I2C3", &hi2c3);
     if (i2c.init() != RET_SUCCESS) {
@@ -571,7 +579,7 @@ int main(void) {
         return -1;
     }
 
-    static HALSPIDevice wizSpi("WIZNET SPI", &hspi2);
+    static HALSPIDevice wizSpi("WIZNET SPI", &hspi1);
     ret = wizSpi.init();
     wizSPI = &wizSpi;
 
@@ -579,6 +587,7 @@ int main(void) {
     sched_start(i2cDevPollTask, {});
     sched_start(spiDevPollTask, {});
     sched_start(netStackInitTask, {});
+    sched_start(ledTask, {});
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -796,7 +805,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, WS25_CS_Pin|ETH_CS_Pin|Wiz_LED_Pin|RS485_MODE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(W5500_RST_GPIO_Port, W5500_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(W5500_RST_GPIO_Port, W5500_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, PA1_LED_Pin|PA2_LED_Pin, GPIO_PIN_RESET);
