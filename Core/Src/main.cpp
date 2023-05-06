@@ -128,7 +128,7 @@ RetType spiDevPollTask(void *) {
     return RET_SUCCESS;
 }
 
-RetType ledTask(void *) {
+RetType startupLEDTask(void *) {
     RESUME();
 
     CALL(ledOne->toggle());
@@ -328,7 +328,7 @@ RetType sensorInitTask(void *) {
     ret = CALL(ledTwo->init());
     static tid_t ledTID = -1;
     if (ret != RET_ERROR) {
-        ledTID = sched_start(ledTask, {});
+        ledTID = sched_start(startupLEDTask, {});
 
         if (-1 == ledTID) {
             CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
@@ -468,6 +468,8 @@ RetType sensorInitTask(void *) {
 RetType netStackInitTask(void *) {
     RESUME();
 
+    static tid_t ledToggleTID = sched_start(wizLEDToggleTask, {});
+
     static W5500 wiznet(*wizSPI, *wizCS);
     w5500 = &wiznet;
 
@@ -506,6 +508,8 @@ RetType netStackInitTask(void *) {
     }
 
     sched_start(sensorInitTask, {});
+    sched_block(ledToggleTID);
+    CALL(wizLED->setState(LED_OFF));
 
 
     netStackInitDone:
@@ -575,7 +579,7 @@ int main(void) {
     ledTwo = &ledTwoLocal;
 
     HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
-    ret = ledOneGPIO.init();
+    ret = wiznetLEDGPIO.init();
     LED wiznetLED(wiznetLEDGPIO);
     wiznetLED.setState(LED_ON);
     wizLED = &wiznetLED;
