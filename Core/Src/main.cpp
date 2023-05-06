@@ -133,6 +133,14 @@ RetType ledTask(void *) {
 
     CALL(ledOne->toggle());
     CALL(ledTwo->toggle());
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType wizLEDToggleTask(void *) {
+    RESUME();
+
     CALL(wizLED->toggle());
 
     RESET();
@@ -318,7 +326,7 @@ RetType sensorInitTask(void *) {
     CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
     RetType ret = CALL(ledOne->init());
     ret = CALL(ledTwo->init());
-    tid_t ledTID = -1;
+    static tid_t ledTID = -1;
     if (ret != RET_ERROR) {
         ledTID = sched_start(ledTask, {});
 
@@ -448,6 +456,10 @@ RetType sensorInitTask(void *) {
     } else {
         CALL(uartDev->write((uint8_t *) "SHT: Sensor Init Failed\r\n", 25));
     }
+
+    sched_block(ledTID);
+    CALL(ledOne->setState(LED_OFF));
+    CALL(ledTwo->setState(LED_OFF));
 
     RESET();
     return RET_ERROR;
@@ -587,7 +599,6 @@ int main(void) {
     sched_start(i2cDevPollTask, {});
     sched_start(spiDevPollTask, {});
     sched_start(netStackInitTask, {});
-    sched_start(ledTask, {});
     /* USER CODE END 2 */
 
     /* Infinite loop */
