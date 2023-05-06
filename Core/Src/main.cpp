@@ -350,9 +350,9 @@ RetType sensorInitTask(void *) {
     static LSM6DSL lsm(*i2cDev);
     lsm6dsl = &lsm;
     tid_t lsmTID = -1;
-    RetType lsm6dslRet = CALL(lsm6dsl->init(LSM6DSL_I2C_ADDR_PRIMARY));
+    RetType lsm6dslRet = CALL(lsm6dsl->init(LSM6DSL_I2C_ADDR_SECONDARY));
     if (lsm6dslRet != RET_ERROR) {
-        lsmTID = sched_start(lsmTask, {}); // TODO: Not starting
+        lsmTID = sched_start(lsmTask, {});
 
         if (-1 == lsmTID) {
             CALL(uartDev->write((uint8_t *) "LSM6DSL: Task Init Failed\r\n", 27));
@@ -384,7 +384,7 @@ RetType sensorInitTask(void *) {
     static ADXL375 adxl(*i2cDev);
     adxl375 = &adxl;
     tid_t adxl375TID = -1;
-    RetType adxl375Ret = CALL(adxl375->init());
+    RetType adxl375Ret = CALL(adxl375->init(0x1D));
     if (adxl375Ret != RET_ERROR) {
         adxl375TID = sched_start(adxlTask, {});
 
@@ -401,9 +401,9 @@ RetType sensorInitTask(void *) {
     static LIS3MDL lis(*i2cDev);
     lis3mdl = &lis;
     tid_t lisTID = -1;
-    RetType lis3mdlRet = CALL(lis3mdl->init(LIS3MDL_I2C_ADDR_SECONDARY));
+    RetType lis3mdlRet = CALL(lis3mdl->init(LIS3MDL_I2C_ADDR_PRIMARY));
     if (lis3mdlRet != RET_ERROR) {
-        lisTID = sched_start(lisTask, {}); // TODO: Not starting
+        lisTID = sched_start(lisTask, {});
 
         if (-1 == lisTID) {
             CALL(uartDev->write((uint8_t *) "LIS3MDL: Task Init Failed\r\n", 27));
