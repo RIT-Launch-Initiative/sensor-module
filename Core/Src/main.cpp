@@ -458,8 +458,8 @@ RetType sensorInitTask(void *) {
     }
 
     sched_block(ledTID);
-    CALL(ledOne->setState(LED_OFF));
-    CALL(ledTwo->setState(LED_OFF));
+    CALL(ledOne->setState(LED_ON)); // Keep it off or on? ON can signal it is powered
+    CALL(ledTwo->setState(LED_ON));
 
     RESET();
     return RET_ERROR;
