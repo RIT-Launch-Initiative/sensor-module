@@ -91,6 +91,7 @@ void HardFault_Handler(void) {
         HAL_GPIO_TogglePin(Wiz_LED_GPIO_Port, Wiz_LED_Pin);
         HAL_GPIO_TogglePin(PA1_LED_GPIO_Port, PA1_LED_Pin);
         HAL_GPIO_TogglePin(PA2_LED_GPIO_Port, PA2_LED_Pin);
+        HAL_Delay(300);
 
         /* USER CODE END W1_HardFault_IRQn 0 */
     }

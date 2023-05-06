@@ -458,8 +458,9 @@ RetType sensorInitTask(void *) {
     }
 
     sched_block(ledTID);
-    CALL(ledOne->setState(LED_ON)); // Keep it off or on? ON can signal it is powered
-    CALL(ledTwo->setState(LED_ON));
+
+    CALL(ledOne->setState(LED_OFF)); // Keep it off or on? ON can signal it is powered
+    CALL(ledTwo->setState(LED_OFF));
 
     RESET();
     return RET_ERROR;
@@ -569,7 +570,7 @@ int main(void) {
     HALGPIODevice ledOneGPIO("LED 1 GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
     ret = ledOneGPIO.init();
     LED ledOneLocal(ledOneGPIO);
-    ledOneLocal.setState(LED_ON);
+    ledOneLocal.setState(LED_OFF);
     ledOne = &ledOneLocal;
 
     HALGPIODevice ledTwoGPIO("LED 2 GPIO", PA2_LED_GPIO_Port, PA2_LED_Pin);
@@ -610,7 +611,7 @@ int main(void) {
 
     while (1) {
         sched_dispatch();
-        HAL_Delay(50);
+        HAL_Delay(2);
         /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */
     }
