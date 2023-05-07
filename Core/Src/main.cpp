@@ -150,28 +150,22 @@ RetType wizLEDToggleTask(void *) {
 RetType bmpTask(void *) {
     RESUME();
 
-    static char buffer[100];
-    static double pressure = 0;
-    static double temperature = 0;
+//    static char buffer[100];
+    static BMP3XX_DATA_STRUCT(bmp_data);
 
-    RetType ret = CALL(bmp3XX->getPressureAndTemp(&pressure, &temperature));
+    RetType ret = CALL(bmp3XX->getPressureAndTemp(&bmp_data.pressure, &bmp_data.temperature));
     if (ret == RET_ERROR) {
         // CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
         RESET();
         return RET_SUCCESS;
     }
 
-    size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
+//     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
     return RET_SUCCESS;
 }
-
-typedef struct {
-    uint16_t id;
-    float temp;
-} tmp_data_t;
 
 RetType tmpTask(void *) {
     RESUME();
@@ -183,21 +177,20 @@ RetType tmpTask(void *) {
     addr.port = 8000;
 
     static char buffer[100];
-    static float temp = 0;
-    static tmp_data_t data = {6969, 0};
+    static TMP117_DATA_STRUCT(tmp_data);
 
-    RetType ret = CALL(tmp117->readTempCelsius(&data.temp));
+    RetType ret = CALL(tmp117->readTempCelsius(&tmp_data.temperature));
     if (ret == RET_ERROR) {
         // CALL(uartDev->write((uint8_t *) "Failed to get TMP data\r\n", 9));
         RESET();
         return RET_SUCCESS;
     }
 
-    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
+//    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
     Packet packet = alloc::Packet<32, 0>();
-    packet.push<tmp_data_t>(data);
+    packet.push<TMP117_DATA_T>(tmp_data);
 
     sock->send(packet.read_ptr<uint8_t>(), packet.size(), &addr);
 
@@ -207,19 +200,17 @@ RetType tmpTask(void *) {
 
 RetType adxlTask(void *) {
     RESUME();
-    static int16_t x = 0;
-    static int16_t y = 0;
-    static int16_t z = 0;
+    static ADXL375_DATA_STRUCT(adxl_data);
 
-    RetType ret = CALL(adxl375->readXYZ(&x, &y, &z));
+    RetType ret = CALL(adxl375->readXYZ(&adxl_data.x_accel, &adxl_data.y_accel, &adxl_data.z_accel));
     if (ret != RET_SUCCESS) {
        // CALL(uartDev->write((uint8_t *) "Failed to get ADXL data\r\n", 24)
         RESET();
         return RET_SUCCESS;
     }
 
-    static char buffer[100];
-    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
+//    static char buffer[100];
+//    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
 
     // Use below if you want to print the values in multiple lines
     // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
@@ -233,32 +224,25 @@ RetType adxlTask(void *) {
 RetType lsmTask(void *) {
     RESUME();
 
-    static int32_t accX = 0;
-    static int32_t accY = 0;
-    static int32_t accZ = 0;
-
-    static int32_t gyroX = 0;
-    static int32_t gyroY = 0;
-    static int32_t gyroZ = 0;
-
-    RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&accX, &accY, &accZ));
+    static LSM6DSL_DATA_STRUCT(lsm_data);
+    RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Accel Axes\r\n", 34));
         RESET();
         return RET_SUCCESS;
     }
 
-    ret = CALL(lsm6dsl->getGyroAxes(&gyroX, &gyroY, &gyroZ));
+    ret = CALL(lsm6dsl->getGyroAxes(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Gyro Axes\r\n", 34));
         RESET();
         return RET_SUCCESS;
     }
 
-    static char buffer[120];
-    size_t size = snprintf(buffer, 120,
-                           "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %ld m/s^2\r\n\t\tY: %ld m/s^2\r\n\t\tZ: %ld m/s^2\r\n\tGyro: \r\n\t\tX: %ld dps\r\n\t\tY: %ld dps\r\n\t\tZ: %ld dps\r\n",
-                           accX, accY, accZ, gyroX, gyroY, gyroZ);
+//    static char buffer[120];
+//    size_t size = snprintf(buffer, 120,
+//                           "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %ld m/s^2\r\n\t\tY: %ld m/s^2\r\n\t\tZ: %ld m/s^2\r\n\tGyro: \r\n\t\tX: %ld dps\r\n\t\tY: %ld dps\r\n\t\tZ: %ld dps\r\n",
+//                           accX, accY, accZ, gyroX, gyroY, gyroZ);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
@@ -267,21 +251,17 @@ RetType lsmTask(void *) {
 
 RetType lisTask(void *) {
     RESUME();
-    static float magX = 0;
-    static float magY = 0;
-    static float magZ = 0;
-    static float temp = 0;
-
-    RetType ret = CALL(lis3mdl->pullSensorData(&magX, &magY, &magZ, &temp));
+    static LIS3MDL_DATA_STRUCT(lis_data);
+    RetType ret = CALL(lis3mdl->pullSensorData(&lis_data.x_mag, &lis_data.y_mag, &lis_data.z_mag, &lis_data.temperature));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "LIS3MDL: Failed to get sensor data\r\n", 35));
         RESET();
         return RET_SUCCESS;
     }
 
-    static char buffer[100];
-    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ,
-                           temp);
+//    static char buffer[100];
+//    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ,
+//                           temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
@@ -291,21 +271,19 @@ RetType lisTask(void *) {
 RetType ms5607Task(void *) {
     RESUME();
 
-    static float pressure = 0;
-    static float temperature = 0;
+    static MS5607_DATA_STRUCT(ms5607_data);
 
-    RetType ret = CALL(ms5607->getPressureTemp(&pressure, &temperature));
+    RetType ret = CALL(ms5607->getPressureTemp(&ms5607_data.pressure, &ms5607_data.temperature));
     if (ret == RET_ERROR) {
         // CALL(uartDev->write((uint8_t *) "Failed to get MS5607 data\r\n", 27));
         RESET();
         return RET_SUCCESS;
     }
 
-    static float altitude = ms5607->getAltitude(pressure, temperature);
-
-    static char buffer[100];
-    size_t size = sprintf(buffer, "MS5607:\r\n\tPressure: %.2f mBar\r\n\tTemperature: %.2f C\r\n\tAltitude: %f\r\n",
-                          pressure, temperature, altitude);
+//    static float altitude = ms5607->getAltitude(pressure, temperature);
+//    static char buffer[100];
+//    size_t size = sprintf(buffer, "MS5607:\r\n\tPressure: %.2f mBar\r\n\tTemperature: %.2f C\r\n\tAltitude: %f\r\n",
+//                          pressure, temperature, altitude);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
@@ -314,18 +292,17 @@ RetType ms5607Task(void *) {
 
 RetType shtc3Task(void *) {
     RESUME();
-    static float temp = 0;
-    static float humidity = 0;
+    static SHTC3_DATA_STRUCT(shtc3_data);
 
-    RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));
+    RetType ret = CALL(shtc3->getHumidityAndTemp(&shtc3_data.temperature, &shtc3_data.humidity));
     if (ret == RET_ERROR) {
         // CALL(uartDev->write((uint8_t *) "SHT: Error\r\n", 12));
         RESET();
         return ret;
     }
 
-    static char buffer[150];
-    size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
+//    static char buffer[150];
+//    size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
     RESET();
