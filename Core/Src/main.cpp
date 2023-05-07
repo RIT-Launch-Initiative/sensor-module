@@ -351,7 +351,6 @@ RetType sensorInitTask(void *) {
             // CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
         }
     }
-
 #endif
 
     // CALL(uartDev->write((uint8_t *) "TMP117: Initializing\r\n", 23));
@@ -474,10 +473,12 @@ RetType sensorInitTask(void *) {
         // CALL(uartDev->write((uint8_t *) "SHT: Sensor Init Failed\r\n", 25));
     }
 
+#ifdef DEBUG
     sched_block(ledTID);
 
     CALL(ledOne->setState(LED_OFF)); // Keep it off or on? ON can signal it is powered
     CALL(ledTwo->setState(LED_OFF));
+#endif
 
     RESET();
     return RET_ERROR;

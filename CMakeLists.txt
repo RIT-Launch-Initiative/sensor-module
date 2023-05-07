@@ -47,11 +47,13 @@ elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
 else ()
     message(STATUS "Minimal optimization, debug info included")
     add_compile_options(-Og -g)
+    add_definitions(-DDEBUG)
+
 endif ()
 
 include_directories(Core/Inc Drivers/STM32F4xx_HAL_Driver/Inc Drivers/STM32F4xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32F4xx/Include Drivers/CMSIS/Include extern/launch-core)
 
-add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32F446xx)
+add_definitions(-DUSE_HAL_DRIVER -DSTM32F446xx)
 
 file(GLOB_RECURSE SOURCES "Core/*.*" "Drivers/*.*" "extern/launch-core/device/Device.cpp" "extern/launch-core/sched/sched.cpp" "extern/launch-core/device/platforms/stm32/HAL_UART_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_I2C_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_SPI_Handlers.cpp")
 
