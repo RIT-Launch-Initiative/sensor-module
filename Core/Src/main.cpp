@@ -477,7 +477,7 @@ RetType sensorInitTask(void *) {
     sched_block(ledTID);
 
     CALL(ledOne->setState(LED_OFF)); // Keep it off or on? ON can signal it is powered
-    CALL(ledTwo->setState(LED_OFF));
+    CALL(ledTwo->setState(LED_ON));
 #endif
 
     RESET();
@@ -632,7 +632,7 @@ int main(void) {
         sched_dispatch();
 
 #ifdef DEBUG
-        HAL_Delay(3);
+//        HAL_Delay(3);
 #endif
         /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */
