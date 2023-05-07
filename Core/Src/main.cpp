@@ -152,6 +152,12 @@ RetType bmpTask(void *) {
 
 //    static char buffer[100];
     static BMP3XX_DATA_STRUCT(bmp_data);
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 10;
+    addr.port = bmp_data.id;
 
     RetType ret = CALL(bmp3XX->getPressureAndTemp(&bmp_data.pressure, &bmp_data.temperature));
     if (ret == RET_ERROR) {
@@ -162,6 +168,7 @@ RetType bmpTask(void *) {
 
 //     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
     // CALL(uartDev->write((uint8_t *) buffer, size));
+    ret = CALL(sock->send(reinterpret_cast<uint8_t*>(&bmp_data), sizeof(bmp_data), &addr));
 
     RESET();
     return RET_SUCCESS;
@@ -169,15 +176,15 @@ RetType bmpTask(void *) {
 
 RetType tmpTask(void *) {
     RESUME();
+
+    static char buffer[100];
+    static TMP117_DATA_STRUCT(tmp_data);
     static IPv4UDPSocket::addr_t addr;
     addr.ip[0] = 10;
     addr.ip[1] = 10;
     addr.ip[2] = 10;
-    addr.ip[3] = 69;
-    addr.port = 8000;
-
-    static char buffer[100];
-    static TMP117_DATA_STRUCT(tmp_data);
+    addr.ip[3] = 10;
+    addr.port = tmp_data.id;
 
     RetType ret = CALL(tmp117->readTempCelsius(&tmp_data.temperature));
     if (ret == RET_ERROR) {
@@ -189,10 +196,7 @@ RetType tmpTask(void *) {
 //    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-    Packet packet = alloc::Packet<32, 0>();
-    packet.push<TMP117_DATA_T>(tmp_data);
-
-    sock->send(packet.read_ptr<uint8_t>(), packet.size(), &addr);
+    ret = CALL(sock->send(reinterpret_cast<uint8_t*>(&tmp_data), sizeof(tmp_data), &addr));
 
     RESET();
     return RET_SUCCESS;
@@ -201,6 +205,12 @@ RetType tmpTask(void *) {
 RetType adxlTask(void *) {
     RESUME();
     static ADXL375_DATA_STRUCT(adxl_data);
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 10;
+    addr.port = adxl_data.id;
 
     RetType ret = CALL(adxl375->readXYZ(&adxl_data.x_accel, &adxl_data.y_accel, &adxl_data.z_accel));
     if (ret != RET_SUCCESS) {
@@ -216,6 +226,7 @@ RetType adxlTask(void *) {
     // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
 
     // CALL(uartDev->write((uint8_t *) buffer, size));
+    ret = CALL(sock->send(reinterpret_cast<uint8_t*>(&adxl_data), sizeof(adxl_data), &addr));
 
     RESET();
     return RET_SUCCESS;
@@ -223,8 +234,14 @@ RetType adxlTask(void *) {
 
 RetType lsmTask(void *) {
     RESUME();
-
     static LSM6DSL_DATA_STRUCT(lsm_data);
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 10;
+    addr.port = lsm_data.id;
+
     RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Accel Axes\r\n", 34));
@@ -245,6 +262,9 @@ RetType lsmTask(void *) {
 //                           accX, accY, accZ, gyroX, gyroY, gyroZ);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
+
+    ret = CALL(sock->send(reinterpret_cast<uint8_t*>(&lsm_data), sizeof(lsm_data), &addr));
+
     RESET();
     return RET_SUCCESS;
 }
@@ -252,6 +272,13 @@ RetType lsmTask(void *) {
 RetType lisTask(void *) {
     RESUME();
     static LIS3MDL_DATA_STRUCT(lis_data);
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 10;
+    addr.port = lis_data.id;
+
     RetType ret = CALL(lis3mdl->pullSensorData(&lis_data.x_mag, &lis_data.y_mag, &lis_data.z_mag, &lis_data.temperature));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "LIS3MDL: Failed to get sensor data\r\n", 35));
@@ -264,6 +291,9 @@ RetType lisTask(void *) {
 //                           temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
+    ret = CALL(sock->send(reinterpret_cast<uint8_t*>(&lis_data), sizeof(lis_data), &addr));
+
+
     RESET();
     return RET_SUCCESS;
 }
@@ -272,6 +302,12 @@ RetType ms5607Task(void *) {
     RESUME();
 
     static MS5607_DATA_STRUCT(ms5607_data);
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 10;
+    addr.port = ms5607_data.id;
 
     RetType ret = CALL(ms5607->getPressureTemp(&ms5607_data.pressure, &ms5607_data.temperature));
     if (ret == RET_ERROR) {
@@ -286,6 +322,9 @@ RetType ms5607Task(void *) {
 //                          pressure, temperature, altitude);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
+    ret = CALL(sock->send(reinterpret_cast<uint8_t*>(&ms5607_data), sizeof(ms5607_data), &addr));
+
+
     RESET();
     return RET_SUCCESS;
 }
@@ -293,6 +332,12 @@ RetType ms5607Task(void *) {
 RetType shtc3Task(void *) {
     RESUME();
     static SHTC3_DATA_STRUCT(shtc3_data);
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 10;
+    addr.port = shtc3_data.id;
 
     RetType ret = CALL(shtc3->getHumidityAndTemp(&shtc3_data.temperature, &shtc3_data.humidity));
     if (ret == RET_ERROR) {
@@ -304,6 +349,9 @@ RetType shtc3Task(void *) {
 //    static char buffer[150];
 //    size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
+
+    ret = CALL(sock->send(reinterpret_cast<uint8_t*>(&shtc3_data), sizeof(shtc3_data), &addr));
+
 
     RESET();
     return RET_SUCCESS;
