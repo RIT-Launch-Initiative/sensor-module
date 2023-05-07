@@ -307,6 +307,8 @@ RetType shtc3Task(void *) {
     RetType ret = CALL(shtc3->getHumidityAndTemp(&temp, &humidity));
     if (ret == RET_ERROR) {
         CALL(uartDev->write((uint8_t *) "SHT: Error\r\n", 12));
+        RESET();
+        return ret;
     }
 
     static char buffer[150];
@@ -444,7 +446,7 @@ RetType sensorInitTask(void *) {
             *i2cDev);
     shtc3 = &sht;
     tid_t shtTID = -1;
-    RetType sht3mdlRet = CALL(shtc3->init());
+    RetType sht3mdlRet = CALL(shtc3->init(0x70));
     if (sht3mdlRet != RET_ERROR) {
         shtTID = sched_start(shtc3Task, {});
 
@@ -508,7 +510,6 @@ RetType netStackInitTask(void *) {
         goto netStackInitDone;
     }
 
-    sched_start(sensorInitTask, {});
     sched_block(ledToggleTID);
     CALL(wizLED->setState(LED_OFF));
 
@@ -604,6 +605,8 @@ int main(void) {
     sched_start(i2cDevPollTask, {});
     sched_start(spiDevPollTask, {});
     sched_start(netStackInitTask, {});
+    sched_start(sensorInitTask, {});
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -611,7 +614,7 @@ int main(void) {
 
     while (1) {
         sched_dispatch();
-        HAL_Delay(2);
+        HAL_Delay(3);
         /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */
     }
