@@ -80,9 +80,8 @@ void Error_Handler(void);
 #define PA1_LED_GPIO_Port GPIOB
 #define PA2_LED_Pin GPIO_PIN_1
 #define PA2_LED_GPIO_Port GPIOB
-#define LSM6_INT1_Pin GPIO_PIN_2
+#define LSM6_INT1_Pin GPIO_PIN_10
 #define LSM6_INT1_GPIO_Port GPIOB
-#define LSM6_INT1_EXTI_IRQn EXTI2_IRQn
 #define LSM6_INT2_DEN_Pin GPIO_PIN_12
 #define LSM6_INT2_DEN_GPIO_Port GPIOB
 #define LSM6_INT2_DEN_EXTI_IRQn EXTI15_10_IRQn
