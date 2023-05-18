@@ -29,7 +29,7 @@
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/peripherals/LED/LED.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
-// #include "device/peripherals/W25Q/W25Q.h"
+#include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
