@@ -141,6 +141,8 @@ RetType promptTask(void *) {
             }
         }
     }
+    RESET();
+    return RET_SUCCESS;
 }
 
 RetType i2cDevPollTask(void *) {
