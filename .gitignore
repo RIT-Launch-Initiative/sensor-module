@@ -1,6 +1,6 @@
 .idea
 .vscode
-
+.project
 build/
 
 .vs/
