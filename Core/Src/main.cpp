@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_UARTDevice.h"
@@ -51,6 +52,13 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef struct {
+	LED** led;
+	bool on;
+	uint32_t on_time;
+	uint32_t period; // Do not make this smaller than on_time, there is no check for this
+} led_flash_t;
+
 
 /* USER CODE END PTD */
 
@@ -113,6 +121,80 @@ static IPv4UDPSocket *sock = nullptr;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// Don't do the variable arguments stuff to save time
+// I don't actually know how much time this saves
+void swprint(const char* msg) {
+#ifdef DEBUG
+	int len = strlen(msg);
+	for (int i = 0; i < len; i++) {
+		ITM_SendChar(msg[i]);
+	}
+#endif
+}
+
+// send stuff down serial wire out if DEBUG flag set
+// Do not send a message larger than 256 bytes
+int swprintf(const char* fmt, ...) {
+#ifdef DEBUG
+	va_list ap;
+	va_start(ap, fmt);
+	char msg[256];
+	int status = vsnprintf(msg, 256, fmt, ap);
+	va_end(ap);
+
+	if (status > 0) {
+		for (int i = 0; i < status; i++) {
+			ITM_SendChar(msg[i]);
+		}
+	}
+
+	return status;
+#else
+	return 0;
+#endif
+}
+
+RetType print_heartbeat_task(void*) {
+	RESUME();
+	static int i = 0;
+	swprintf("Ping %d\n", i++);
+	SLEEP(1000);
+	RESET();
+	return RET_SUCCESS;
+}
+
+RetType flash_led_task(void* params) {
+	RESUME();
+	led_flash_t* arg = ((led_flash_t*) params);
+	LED* task_led = *(arg->led);
+
+	if (NULL != task_led) {
+		if ((arg -> on) && (arg->period - arg->on_time > 0)) {
+			task_led->setState(LED_OFF);
+			arg->on = false;
+			SLEEP(arg->period - arg->on_time);
+		} else if (arg->on_time > 0) {
+			task_led->setState(LED_ON);
+			arg->on = true;
+			SLEEP(arg->on_time);
+		}
+	}
+	RESET();
+	return RET_SUCCESS;
+}
+
+RetType init_led_task(void*) {
+	RESUME();
+
+	CALL(ledOne->init());
+	CALL(ledTwo->init());
+	CALL(wizLED->init());
+
+	RESET();
+	return RET_ERROR;
+}
+
+
 RetType i2cDevPollTask(void *) {
     RESUME();
     CALL(i2cDev->poll());
@@ -128,29 +210,9 @@ RetType spiDevPollTask(void *) {
     return RET_SUCCESS;
 }
 
-RetType startupLEDTask(void *) {
-    RESUME();
-
-    CALL(ledOne->toggle());
-    CALL(ledTwo->toggle());
-
-    RESET();
-    return RET_SUCCESS;
-}
-
-RetType wizLEDToggleTask(void *) {
-    RESUME();
-
-    CALL(wizLED->toggle());
-
-    RESET();
-    return RET_SUCCESS;
-}
-
 RetType bmpTask(void *) {
     RESUME();
 
-//    static char buffer[100];
     static BMP3XX_DATA_STRUCT(bmp_data);
     static IPv4UDPSocket::addr_t addr;
     addr.ip[0] = 10;
@@ -161,13 +223,12 @@ RetType bmpTask(void *) {
 
     RetType ret = CALL(bmp3XX->getPressureAndTemp(&bmp_data.pressure, &bmp_data.temperature));
     if (ret == RET_ERROR) {
-        // CALL(uartDev->write((uint8_t *) "Failed to get BMP data\r\n", 24));
+    	swprint("Failed to get BMP data\n");
         RESET();
         return RET_SUCCESS;
     }
 
-//     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
-    // CALL(uartDev->write((uint8_t *) buffer, size));
+    swprintf("BMP\n\tP: %3.2f Pa\n\tT: %3.2f C\n", bmp_data.pressure, bmp_data.temperature);
     ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&bmp_data), sizeof(bmp_data), &addr));
 
     RESET();
@@ -341,44 +402,35 @@ RetType shtc3Task(void *) {
     addr.port = shtc3_data.id;
 
     RetType ret = CALL(shtc3->getHumidityAndTemp(&shtc3_data.temperature, &shtc3_data.humidity));
-    if (ret == RET_ERROR) {
-        // CALL(uartDev->write((uint8_t *) "SHT: Error\r\n", 12));
-        RESET();
-        return ret;
+    if (RET_ERROR == ret) {
+    	swprint("#RED#SHTC3: Data read fail\n");
+    	goto shtc3_end;
     }
-
-//    static char buffer[150];
-//    size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
-    // CALL(uartDev->write((uint8_t *) buffer, size));
+    swprintf("SHTC3: T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
 
     ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&shtc3_data), sizeof(shtc3_data), &addr));
+    if (RET_ERROR == ret) {
+    	swprint("#RED#SHTC3: Socket send fail\n");
+    	goto shtc3_end;
+    }
 
-
+    shtc3_end:
+	SLEEP(1000);
     RESET();
     return RET_SUCCESS;
 }
 
+static led_flash_t led1_flash = {.led = &ledOne, .on_time = 100, .period = 250};
+static led_flash_t led2_flash = {.led = &ledTwo, .on_time = 100, .period = 250};
+static led_flash_t wiz_flash = {.led = &wizLED, .on_time = 100, .period = 250};
 
 RetType sensorInitTask(void *) {
     RESUME();
 
-#ifdef DEBUG
-    // CALL(uartDev->write((uint8_t *) "LED: Initializing\r\n", 19));
-    RetType ret = CALL(ledOne->init());
-    ret = CALL(ledTwo->init());
-    static tid_t ledTID = -1;
-    if (ret != RET_ERROR) {
-        ledTID = sched_start(startupLEDTask, {});
+    tid_t flash1 = sched_start(flash_led_task, &led1_flash);
+    tid_t flash2 = sched_start(flash_led_task, &led2_flash);
 
-        if (-1 == ledTID) {
-            // CALL(uartDev->write((uint8_t *) "LED: Task Init Failed\r\n", 23));
-        } else {
-            // CALL(uartDev->write((uint8_t *) "LED: Initialized\r\n", 18));
-        }
-    }
-#endif
-
-    // CALL(uartDev->write((uint8_t *) "TMP117: Initializing\r\n", 23));
+    swprint("Initializing TMP117\n");
     static TMP117 tmp(*i2cDev);
     tmp117 = &tmp;
     tid_t tmpTID = -1;
@@ -387,15 +439,15 @@ RetType sensorInitTask(void *) {
         tmpTID = sched_start(tmpTask, {});
 
         if (-1 == tmpTID) {
-            // CALL(uartDev->write((uint8_t *) "TMP117: Task Init Failed\r\n", 27));
+			swprint("#RED#SHTC3 task start failed\n");
         } else {
-            // CALL(uartDev->write((uint8_t *) "TMP117: Initialized\r\n", 22));
+			swprint("#GRN#SHTC3 task start OK\n");
         }
     } else {
-        // CALL(uartDev->write((uint8_t *) "TMP117: Sensor Init Failed\r\n", 29));
+		swprint("#RED#SHTC3 init failed\n");
     }
 
-    // CALL(uartDev->write((uint8_t *) "LSM6DSL: Initializing\r\n", 23));
+    swprint("Initializing LSM6DSL\n");
     static LSM6DSL lsm(*i2cDev);
     lsm6dsl = &lsm;
     tid_t lsmTID = -1;
@@ -404,32 +456,32 @@ RetType sensorInitTask(void *) {
         lsmTID = sched_start(lsmTask, {});
 
         if (-1 == lsmTID) {
-            // CALL(uartDev->write((uint8_t *) "LSM6DSL: Task Init Failed\r\n", 27));
+			swprint("#RED#LSM6DSL task start failed\n");
         } else {
-            // CALL(uartDev->write((uint8_t *) "LSM6DSL: Initialized\r\n", 22));
+			swprint("#GRN#LSM6DSL task start OK\n");
         }
     } else {
-        // CALL(uartDev->write((uint8_t *) "LSM6DSL: Sensor Init Failed\r\n", 29));
+		swprint("#RED#LSM6DSL init failed\n");
     }
 
-//    // CALL(uartDev->write((uint8_t *) "MS5607: Initializing\r\n", 22));
-//    static MS5607 ms5(*i2cDev);
-//    ms5607 = &ms5;
-//    tid_t ms5TID = -1;
-//    RetType ms5Ret = CALL(ms5607->init());
-//    if (ms5Ret != RET_ERROR) {
-//        ms5TID = sched_start(ms5607Task, {});
-//
-//        if (-1 == ms5TID) {
-//            // CALL(uartDev->write((uint8_t *) "MS5607: Task Init Failed\r\n", 26));
-//        } else {
-//            // CALL(uartDev->write((uint8_t *) "MS5607: Initialized\r\n", 21));
-//        }
-//    } else {
-//        // CALL(uartDev->write((uint8_t *) "MS5607: Sensor Init Failed\r\n", 28));
-//    }
+    swprint("Initializing MS5607\n");
+    static MS5607 ms5(*i2cDev);
+    ms5607 = &ms5;
+    tid_t ms5TID = -1;
+    RetType ms5Ret = CALL(ms5607->init());
+    if (ms5Ret != RET_ERROR) {
+        ms5TID = sched_start(ms5607Task, {});
 
-    // CALL(uartDev->write((uint8_t *) "ADXL375: Initializing\r\n", 23));
+        if (-1 == ms5TID) {
+			swprint("#RED#MS5607 task start failed\n");
+        } else {
+			swprint("#GRN#MS5607 task start OK\n");
+        }
+    } else {
+		swprint("#RED#MS5607 init failed\n");
+    }
+
+    swprint("Initializing ADXL375\n");
     static ADXL375 adxl(*i2cDev);
     adxl375 = &adxl;
     tid_t adxl375TID = -1;
@@ -438,15 +490,15 @@ RetType sensorInitTask(void *) {
         adxl375TID = sched_start(adxlTask, {});
 
         if (-1 == adxl375TID) {
-            // CALL(uartDev->write((uint8_t *) "ADXL375: Task Init Failed\r\n", 27));
+			swprint("#RED#ADXL375 task start failed\n");
         } else {
-            // CALL(uartDev->write((uint8_t *) "ADXL375: Initialized\r\n", 22));
+			swprint("#GRN#ADXL375 task start OK\n");
         }
     } else {
-        // CALL(uartDev->write((uint8_t *) "ADXL375: Sensor Init Failed\r\n", 29));
+		swprint("#RED#ADXL375 init \n");
     }
 
-    // CALL(uartDev->write((uint8_t *) "LIS3MDL: Initializing\r\n", 23));
+    swprint("Initializing LIS3MDL\n");
     static LIS3MDL lis(*i2cDev);
     lis3mdl = &lis;
     tid_t lisTID = -1;
@@ -455,34 +507,16 @@ RetType sensorInitTask(void *) {
         lisTID = sched_start(lisTask, {});
 
         if (-1 == lisTID) {
-            // CALL(uartDev->write((uint8_t *) "LIS3MDL: Task Init Failed\r\n", 27));
+			swprint("#RED#LIS3MDL task start failed\n");
         } else {
-            // CALL(uartDev->write((uint8_t *) "LIS3MDL: Initialized\r\n", 22));
+			swprint("#GRN#LIS3MDL task start OK\n");
         }
     } else {
-        // CALL(uartDev->write((uint8_t *) "LIS3MDL: Sensor Init Failed\r\n", 29));
+		swprint("#RED#LIS3MDL init failed\n");
     }
 
-    // CALL(uartDev->write((uint8_t *) "BMP388: Initializing\r\n", 22));
-    static BMP3XX bmp(*i2cDev);
-    bmp3XX = &bmp;
-    tid_t bmpTID = -1;
-    RetType bmp3Ret = CALL(bmp3XX->init());
-    if (bmp3Ret != RET_ERROR) {
-        bmpTID = sched_start(bmpTask, {});
-
-        if (-1 == bmpTID) {
-            // CALL(uartDev->write((uint8_t *) "BMP388: Task Init Failed\r\n", 26));
-        } else {
-            // CALL(uartDev->write((uint8_t *) "BMP388: Initialized\r\n", 21));
-        }
-    } else {
-        // CALL(uartDev->write((uint8_t *) "BMP388: Sensor Init Failed\r\n", 28));
-    }
-
-    // CALL(uartDev->write((uint8_t *) "SHTC3: Initializing\r\n", 19));
-    static SHTC3 sht(
-            *i2cDev);
+    swprint("Initializing SHTC3\n");
+    static SHTC3 sht(*i2cDev);
     shtc3 = &sht;
     tid_t shtTID = -1;
     RetType sht3mdlRet = CALL(shtc3->init(0x70));
@@ -490,20 +524,18 @@ RetType sensorInitTask(void *) {
         shtTID = sched_start(shtc3Task, {});
 
         if (-1 == shtTID) {
-            // CALL(uartDev->write((uint8_t *) "SHT: Task Init Failed\r\n", 23));
+			swprint("#RED#SHTC3 task start failed\n");
         } else {
-            // CALL(uartDev->write((uint8_t *) "SHT: Initialized\r\n", 19));
+			swprint("#GRN#SHTC3 task start OK\n");
         }
     } else {
-        // CALL(uartDev->write((uint8_t *) "SHT: Sensor Init Failed\r\n", 25));
+		swprint("#RED#SHTC3 init failed\n");
     }
 
-#ifdef DEBUG
-    sched_block(ledTID);
+    led1_flash.period = 1000;
+    led2_flash.period = 1000;
 
-    CALL(ledOne->setState(LED_OFF)); // Keep it off or on? ON can signal it is powered
-    CALL(ledTwo->setState(LED_ON));
-#endif
+    swprint("Finished initializing sensors\n");
 
     RESET();
     return RET_ERROR;
@@ -512,7 +544,7 @@ RetType sensorInitTask(void *) {
 RetType netStackInitTask(void *) {
     RESUME();
 
-    static tid_t ledToggleTID = sched_start(wizLEDToggleTask, {});
+	sched_start(flash_led_task, &wiz_flash);
 
     static W5500 wiznet(*wizSPI, *wizCS);
     w5500 = &wiznet;
@@ -537,25 +569,29 @@ RetType netStackInitTask(void *) {
     ipv4::IPv4Address(10, 10, 10, 69, &temp_addr);
     stack->add_multicast(temp_addr);
 
-    // CALL(uartDev->write((uint8_t *) "W5500: Initializing\r\n", 23));
+
+    swprint("Initializing W5500\n");
     RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
-    if (ret != RET_SUCCESS) {
-        // CALL(uartDev->write((uint8_t *) "W5500: Failed to initialize\r\n", 29));
+    if (RET_SUCCESS != ret) {
+		swprint("#RED#W5500 init failed\n");
         goto netStackInitDone;
+    } else {
+		swprint("#GRN#W5500 init OK\n");
     }
 
-    // CALL(uartDev->write((uint8_t *) "W5500: Initialized\r\n", 20));
 
-    if (RET_SUCCESS != stack->init()) {
-        // CALL(uartDev->write((uint8_t *) "Failed to initialize network stack\r\n", 35));
+    swprint("Initializing network stack\n");
+    ret = stack->init();
+    if (RET_SUCCESS != ret) {
+    	swprint("#RED#Net stack init failed");
         goto netStackInitDone;
+    } else {
+		swprint("#GRN#Net stack init OK\n");
     }
 
-    sched_block(ledToggleTID);
-    CALL(wizLED->setState(LED_OFF));
-
-
+    swprint("Successfully initialized network interface\n");
     netStackInitDone:
+    wiz_flash.period = 1000;
     RESET();
     return RET_ERROR; // Kill task
 }
@@ -596,15 +632,16 @@ int main(void) {
     /* USER CODE BEGIN 2 */
     HALUARTDevice uart("UART", &huart5);
     RetType ret = uart.init();
+
     if (ret != RET_SUCCESS) {
-        HAL_UART_Transmit_IT(&huart5, (uint8_t *) "Failed to init UART Device. Exiting.\n\r", 38);
+    	swprint("Failed to init UART\n");
         return -1;
     }
     uartDev = &uart;
-    HAL_UART_Transmit(&huart5, (uint8_t *) "UART Device Initialized\n\r", 25, 1000);
+    swprint("UART Initalized\n");
 
     if (!sched_init(&HAL_GetTick)) {
-        HAL_UART_Transmit_IT(&huart5, (uint8_t *) "Failed to init scheduler\n\r", 30);
+    	swprint("Failed to init scheduler\n");
         return -1;
     }
 
@@ -633,16 +670,21 @@ int main(void) {
     wizChipSelect.set(1);
 
     static HALI2CDevice i2c("HAL I2C3", &hi2c3);
-    if (i2c.init() != RET_SUCCESS) {
-        HAL_UART_Transmit_IT(&huart5, (uint8_t *) "Failed to init I2C1 Device. Exiting.\n\r", 38);
+    ret = i2c.init();
+    if (RET_SUCCESS != ret) {
+    	swprint("Failed to init I2C1\n");
         return -1;
     }
+	i2cDev = &i2c;
 
     static HALSPIDevice wizSpi("WIZNET SPI", &hspi1);
     ret = wizSpi.init();
+    if (RET_SUCCESS != ret) {
+    	swprint("Failed to init SPI\n");
+    	return -1;
+    }
     wizSPI = &wizSpi;
 
-    i2cDev = &i2c;
     sched_start(i2cDevPollTask, {});
     sched_start(spiDevPollTask, {});
     sched_start(netStackInitTask, {});
@@ -655,10 +697,6 @@ int main(void) {
 
     while (1) {
         sched_dispatch();
-
-#ifdef DEBUG
-//        HAL_Delay(3);
-#endif
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
