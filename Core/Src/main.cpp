@@ -29,7 +29,7 @@
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/peripherals/LED/LED.h"
 #include "device/platforms/stm32/HAL_I2CDevice.h"
-#include "device/peripherals/W25Q/W25Q.h"
+//#include "device/peripherals/W25Q/W25Q.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
@@ -37,8 +37,8 @@
 #include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
-#include "device/peripherals/W5500/W5500.h"
-
+//#include "device/peripherals/W5500/W5500.h"
+#include "device/peripherals/wiznet/wiznet.h"
 #include "net/packet/Packet.h"
 #include "net/stack/IPv4UDP/IPv4UDPStack.h"
 #include "net/stack/IPv4UDP/IPv4UDPSocket.h"
@@ -105,7 +105,7 @@ static HALSPIDevice *wizSPI = nullptr;
 static HALGPIODevice *wizCS = nullptr;
 static HALSPIDevice *flashSPI = nullptr;
 
-static W5500 *w5500 = nullptr;
+static Wiznet *w5500 = nullptr;
 static IPv4UDPStack *stack = nullptr;
 static IPv4UDPSocket *sock = nullptr;
 
@@ -509,12 +509,40 @@ RetType sensorInitTask(void *) {
     return RET_ERROR;
 }
 
+RetType wizRecvTestTask(void *) {
+    RESUME();
+    static Packet packet = alloc::Packet<IPv4UDPSocket::MTU_NO_HEADERS - IPv4UDPSocket::HEADERS_SIZE, IPv4UDPSocket::HEADERS_SIZE>();
+    static uint8_t *buff;
+
+    RetType ret = CALL(w5500->recv_data(stack->get_eth(), packet));
+    buff = packet.raw();
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+RetType wizSendTestTask(void *) {
+    RESUME();
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 1;
+    addr.port = 8000;
+
+    static uint8_t buff[7] = {'L', 'a', 'u', 'n', 'c', 'h', '!'};
+    RetType ret = CALL(sock->send(buff, 7, &addr));
+
+    RESET();
+    return RET_SUCCESS;
+}
+
 RetType netStackInitTask(void *) {
     RESUME();
 
     static tid_t ledToggleTID = sched_start(wizLEDToggleTask, {});
 
-    static W5500 wiznet(*wizSPI, *wizCS);
+    static Wiznet wiznet(*wizSPI, *wizCS, *wizCS);
     w5500 = &wiznet;
 
     static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
@@ -538,7 +566,7 @@ RetType netStackInitTask(void *) {
     stack->add_multicast(temp_addr);
 
     // CALL(uartDev->write((uint8_t *) "W5500: Initializing\r\n", 23));
-    RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
+    RetType ret = CALL(wiznet.init(mac_addr));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "W5500: Failed to initialize\r\n", 29));
         goto netStackInitDone;
@@ -553,6 +581,8 @@ RetType netStackInitTask(void *) {
 
     sched_block(ledToggleTID);
     CALL(wizLED->setState(LED_OFF));
+    sched_start(wizSendTestTask, {});
+    sched_start(wizRecvTestTask, {});
 
 
     netStackInitDone:

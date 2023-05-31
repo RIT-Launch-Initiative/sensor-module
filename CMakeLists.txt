@@ -55,7 +55,7 @@ include_directories(Core/Inc Drivers/STM32F4xx_HAL_Driver/Inc Drivers/STM32F4xx_
 
 add_definitions(-DUSE_HAL_DRIVER -DSTM32F446xx)
 
-file(GLOB_RECURSE SOURCES "Core/*.*" "Drivers/*.*" "extern/launch-core/device/Device.cpp" "extern/launch-core/sched/sched.cpp" "extern/launch-core/device/platforms/stm32/HAL_UART_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_I2C_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_SPI_Handlers.cpp")
+file(GLOB_RECURSE SOURCES "Core/*.*" "Drivers/STM32F4xx_HAL_Driver/*.*" "extern/launch-core/device/Device.cpp" "extern/launch-core/sched/sched.cpp" "extern/launch-core/device/platforms/stm32/HAL_UART_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_I2C_Handlers.cpp" "extern/launch-core/device/platforms/stm32/HAL_SPI_Handlers.cpp")
 
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32F446RETX_FLASH.ld)
 
