@@ -229,7 +229,7 @@ RetType bmpTask(void *) {
     }
 
     swprintf("BMP\n\tP: %3.2f Pa\n\tT: %3.2f C\n", bmp_data.pressure, bmp_data.temperature);
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&bmp_data), sizeof(bmp_data), &addr));
+//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&bmp_data), sizeof(bmp_data), &addr));
 
     RESET();
     return RET_SUCCESS;
@@ -256,8 +256,9 @@ RetType tmpTask(void *) {
 
 //    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
+    swprintf("TMP117\n\tTemperature: %3.2f C\n", tmp_data.temperature);
 
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&tmp_data), sizeof(tmp_data), &addr));
+//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&tmp_data), sizeof(tmp_data), &addr));
 
     RESET();
     return RET_SUCCESS;
@@ -287,7 +288,8 @@ RetType adxlTask(void *) {
     // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
 
     // CALL(uartDev->write((uint8_t *) buffer, size));
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&adxl_data), sizeof(adxl_data), &addr));
+    swprintf("ADXL375\n\tX-Axis: %3.2f m/s^2\n\tY-Axis: %3.2f m/s^2\n\tZ-Axis: %3.2f m/s^2\n", adxl_data.x_accel, adxl_data.y_accel, adxl_data.z_accel);
+//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&adxl_data), sizeof(adxl_data), &addr));
 
     RESET();
     return RET_SUCCESS;
@@ -323,8 +325,10 @@ RetType lsmTask(void *) {
 //                           accX, accY, accZ, gyroX, gyroY, gyroZ);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lsm_data), sizeof(lsm_data), &addr));
+    swprintf(
+            "LSM6DSL\n\tAccel:\n\t\tX: %3.2f m/s^2\n\t\tY: %3.2f m/s^2\n\t\tZ: %3.2f m/s^2\n\tGyro:\n\t\tX: %3.2f dps\n\t\tY: %3.2f dps\n\t\tZ: %3.2f dps\n",
+            lsm_data.x_accel, lsm_data.y_accel, lsm_data.z_accel, lsm_data.x_gyro, lsm_data.y_gyro, lsm_data.z_gyro);
+//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lsm_data), sizeof(lsm_data), &addr));
 
     RESET();
     return RET_SUCCESS;
@@ -348,12 +352,15 @@ RetType lisTask(void *) {
         return RET_SUCCESS;
     }
 
+    swprintf("LIS3MDL\n\tX: %3.2f gauss\n\tY: %3.2f gauss\n\tZ: %3.2f gauss\n\tTemp: %3.2f C\n", lis_data.x_mag,
+             lis_data.y_mag, lis_data.z_mag, lis_data.temperature);
+
 //    static char buffer[100];
 //    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ,
 //                           temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lis_data), sizeof(lis_data), &addr));
+//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lis_data), sizeof(lis_data), &addr));
 
 
     RESET();
@@ -384,7 +391,9 @@ RetType ms5607Task(void *) {
 //                          pressure, temperature, altitude);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&ms5607_data), sizeof(ms5607_data), &addr));
+    swprintf("MS5607:\n\tPressure: %.2f mBar\n\tTemperature: %.2f C\n\tAltitude: %f\n", ms5607_data.pressure,
+             ms5607_data.temperature, ms5607->getAltitude(ms5607_data.pressure, ms5607_data.temperature));
+//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&ms5607_data), sizeof(ms5607_data), &addr));
 
 
     RESET();
@@ -406,16 +415,15 @@ RetType shtc3Task(void *) {
     	swprint("#RED#SHTC3: Data read fail\n");
     	goto shtc3_end;
     }
-    swprintf("SHTC3: T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
+    swprintf("SHTC3:\n\t T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
 
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&shtc3_data), sizeof(shtc3_data), &addr));
-    if (RET_ERROR == ret) {
-    	swprint("#RED#SHTC3: Socket send fail\n");
-    	goto shtc3_end;
-    }
+//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&shtc3_data), sizeof(shtc3_data), &addr));
+//    if (RET_ERROR == ret) {
+//    	swprint("#RED#SHTC3: Socket send fail\n");
+//    	goto shtc3_end;
+//    }
 
     shtc3_end:
-	SLEEP(1000);
     RESET();
     return RET_SUCCESS;
 }
@@ -429,6 +437,7 @@ RetType sensorInitTask(void *) {
 
     tid_t flash1 = sched_start(flash_led_task, &led1_flash);
     tid_t flash2 = sched_start(flash_led_task, &led2_flash);
+    tid_t hbeat = sched_start(print_heartbeat_task, {});
 
     swprint("Initializing TMP117\n");
     static TMP117 tmp(*i2cDev);
@@ -439,12 +448,12 @@ RetType sensorInitTask(void *) {
         tmpTID = sched_start(tmpTask, {});
 
         if (-1 == tmpTID) {
-			swprint("#RED#SHTC3 task start failed\n");
+			swprint("#RED#TMP117 task start failed\n");
         } else {
-			swprint("#GRN#SHTC3 task start OK\n");
+			swprint("#GRN#TMP117 task start OK\n");
         }
     } else {
-		swprint("#RED#SHTC3 init failed\n");
+		swprint("#RED#TMP117 init failed\n");
     }
 
     swprint("Initializing LSM6DSL\n");
@@ -453,7 +462,7 @@ RetType sensorInitTask(void *) {
     tid_t lsmTID = -1;
     RetType lsm6dslRet = CALL(lsm6dsl->init(LSM6DSL_I2C_ADDR_SECONDARY));
     if (lsm6dslRet != RET_ERROR) {
-        lsmTID = sched_start(lsmTask, {});
+//        lsmTID = sched_start(lsmTask, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == lsmTID) {
 			swprint("#RED#LSM6DSL task start failed\n");
@@ -470,7 +479,7 @@ RetType sensorInitTask(void *) {
     tid_t ms5TID = -1;
     RetType ms5Ret = CALL(ms5607->init());
     if (ms5Ret != RET_ERROR) {
-        ms5TID = sched_start(ms5607Task, {});
+        ms5TID = sched_start(ms5607Task, {}); // TODO: Doesn't print data?
 
         if (-1 == ms5TID) {
 			swprint("#RED#MS5607 task start failed\n");
@@ -521,7 +530,7 @@ RetType sensorInitTask(void *) {
     tid_t shtTID = -1;
     RetType sht3mdlRet = CALL(shtc3->init(0x70));
     if (sht3mdlRet != RET_ERROR) {
-        shtTID = sched_start(shtc3Task, {});
+//        shtTID = sched_start(shtc3Task, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == shtTID) {
 			swprint("#RED#SHTC3 task start failed\n");
