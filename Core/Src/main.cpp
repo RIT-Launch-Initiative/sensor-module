@@ -325,9 +325,10 @@ RetType lsmTask(void *) {
 //                           accX, accY, accZ, gyroX, gyroY, gyroZ);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-    swprintf(
-            "LSM6DSL\n\tAccel:\n\t\tX: %3.2f m/s^2\n\t\tY: %3.2f m/s^2\n\t\tZ: %3.2f m/s^2\n\tGyro:\n\t\tX: %3.2f dps\n\t\tY: %3.2f dps\n\t\tZ: %3.2f dps\n",
-            lsm_data.x_accel, lsm_data.y_accel, lsm_data.z_accel, lsm_data.x_gyro, lsm_data.y_gyro, lsm_data.z_gyro);
+    swprintf("LSM6DSL\n\tAccel:\n\t\tX: %3.2f m/s^2\n\t\tY: %3.2f m/s^2\n\t\tZ: %3.2f m/s^2\n",
+            lsm_data.x_accel, lsm_data.y_accel, lsm_data.z_accel);
+    swprintf("\tGyro:\n\t\tX: %3.2f dps\n\t\tY: %3.2f dps\n\t\tZ: %3.2f dps\n",
+            lsm_data.x_gyro, lsm_data.y_gyro, lsm_data.z_gyro);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lsm_data), sizeof(lsm_data), &addr));
 
     RESET();
@@ -462,7 +463,7 @@ RetType sensorInitTask(void *) {
     tid_t lsmTID = -1;
     RetType lsm6dslRet = CALL(lsm6dsl->init(LSM6DSL_I2C_ADDR_SECONDARY));
     if (lsm6dslRet != RET_ERROR) {
-//        lsmTID = sched_start(lsmTask, {}); // TODO: Causes no other I2C tasks to run
+        lsmTID = sched_start(lsmTask, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == lsmTID) {
 			swprint("#RED#LSM6DSL task start failed\n");
@@ -530,7 +531,7 @@ RetType sensorInitTask(void *) {
     tid_t shtTID = -1;
     RetType sht3mdlRet = CALL(shtc3->init(0x70));
     if (sht3mdlRet != RET_ERROR) {
-//        shtTID = sched_start(shtc3Task, {}); // TODO: Causes no other I2C tasks to run
+        shtTID = sched_start(shtc3Task, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == shtTID) {
 			swprint("#RED#SHTC3 task start failed\n");
