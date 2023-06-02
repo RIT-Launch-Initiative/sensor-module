@@ -38,8 +38,8 @@
 #include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
-#include "device/peripherals/W5500/W5500.h"
-//#include "device/peripherals/wiznet/wiznet.h"
+//#include "device/peripherals/W5500/W5500.h"
+#include "device/peripherals/wiznet/wiznet.h"
 #include "net/packet/Packet.h"
 #include "net/stack/IPv4UDP/IPv4UDPStack.h"
 #include "net/stack/IPv4UDP/IPv4UDPSocket.h"
@@ -111,9 +111,10 @@ static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 static HALSPIDevice *wizSPI = nullptr;
 static HALGPIODevice *wizCS = nullptr;
+static HALGPIODevice *wizRST = nullptr;
 static HALSPIDevice *flashSPI = nullptr;
 
-static W5500 *w5500 = nullptr;
+static Wiznet *w5500 = nullptr;
 static IPv4UDPStack *stack = nullptr;
 static IPv4UDPSocket *sock = nullptr;
 
@@ -431,7 +432,6 @@ RetType shtc3Task(void *) {
 
 static led_flash_t led1_flash = {.led = &ledOne, .on_time = 100, .period = 250};
 static led_flash_t led2_flash = {.led = &ledTwo, .on_time = 100, .period = 250};
-static led_flash_t wiz_flash = {.led = &wizLED, .on_time = 100, .period = 250};
 
 RetType sensorInitTask(void *) {
     RESUME();
@@ -563,28 +563,26 @@ RetType sensorInitTask(void *) {
 //    return RET_SUCCESS;
 //}
 //
-//RetType wizSendTestTask(void *) {
-//    RESUME();
-//    static IPv4UDPSocket::addr_t addr;
-//    addr.ip[0] = 10;
-//    addr.ip[1] = 10;
-//    addr.ip[2] = 10;
-//    addr.ip[3] = 1;
-//    addr.port = 8000;
-//
-//    static uint8_t buff[7] = {'L', 'a', 'u', 'n', 'c', 'h', '!'};
-//    RetType ret = CALL(sock->send(buff, 7, &addr));
-//
-//    RESET();
-//    return RET_SUCCESS;
-//}
+RetType wizSendTestTask(void *) {
+    RESUME();
+    static IPv4UDPSocket::addr_t addr;
+    addr.ip[0] = 10;
+    addr.ip[1] = 10;
+    addr.ip[2] = 10;
+    addr.ip[3] = 1;
+    addr.port = 8000;
+
+    static uint8_t buff[7] = {'L', 'a', 'u', 'n', 'c', 'h', '!'};
+    RetType ret = CALL(sock->send(buff, 7, &addr));
+
+    RESET();
+    return RET_SUCCESS;
+}
 
 RetType netStackInitTask(void *) {
     RESUME();
 
-	sched_start(flash_led_task, &wiz_flash);
-
-    static W5500 wiznet(*wizSPI, *wizCS);
+    static Wiznet wiznet(*wizSPI, *wizCS, *wizRST, *wizLED);
     w5500 = &wiznet;
 
     static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
@@ -609,7 +607,7 @@ RetType netStackInitTask(void *) {
 
 
     swprint("Initializing W5500\n");
-    RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
+    RetType ret = CALL(wiznet.init(mac_addr));
     if (RET_SUCCESS != ret) {
 		swprint("#RED#W5500 init failed\n");
         goto netStackInitDone;
@@ -628,9 +626,9 @@ RetType netStackInitTask(void *) {
     }
 
     swprint("Successfully initialized network interface\n");
+    sched_start(wizSendTestTask, {});
 
     netStackInitDone:
-    wiz_flash.period = 1000;
     RESET();
     return RET_ERROR; // Kill task
 }
@@ -707,6 +705,11 @@ int main(void) {
     ret = wizChipSelect.init();
     wizCS = &wizChipSelect;
     wizChipSelect.set(1);
+
+    HALGPIODevice wizChipReset("Wiznet RST", W5500_RST_GPIO_Port, W5500_RST_Pin);
+    ret = wizChipReset.init();
+    wizRST = &wizChipReset;
+    wizChipReset.set(1);
 
     static HALI2CDevice i2c("HAL I2C3", &hi2c3);
     ret = i2c.init();
