@@ -26,28 +26,11 @@
 #include <stdarg.h>
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
-#include "device/platforms/stm32/HAL_UARTDevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/peripherals/LED/LED.h"
-#include "device/platforms/stm32/HAL_I2CDevice.h"
-// #include "device/peripherals/W25Q/W25Q.h"
-#include "device/peripherals/ADXL375/ADXL375.h"
-#include "device/peripherals/BMP3XX/BMP3XX.h"
-#include "device/peripherals/LIS3MDL/LIS3MDL.h"
-#include "device/peripherals/LSM6DSL/LSM6DSL.h"
-#include "device/peripherals/MS5607/MS5607.h"
-#include "device/peripherals/SHTC3/SHTC3.h"
-#include "device/peripherals/TMP117/TMP117.h"
-#include "device/peripherals/W5500/W5500.h"
-
-#include "net/packet/Packet.h"
-#include "net/stack/IPv4UDP/IPv4UDPStack.h"
-#include "net/stack/IPv4UDP/IPv4UDPSocket.h"
+#include "device/peripherals/W25Q/W25Q.h"
 
 #include "sched/macros/call.h"
-
-
-// #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,7 +39,7 @@ typedef struct {
 	LED** led;
 	bool on;
 	uint32_t on_time;
-	uint32_t period; // Do not make this smaller than on_time, there is no check for this
+	uint32_t period;
 } led_flash_t;
 
 
@@ -64,6 +47,7 @@ typedef struct {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define DEBUG
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -97,37 +81,51 @@ static void MX_I2C3_Init(void);
 static void MX_UART5_Init(void);
 
 /* USER CODE BEGIN PFP */
-static MS5607 *ms5607 = nullptr;
-static BMP3XX *bmp3XX = nullptr;
-static ADXL375 *adxl375 = nullptr;
-static LIS3MDL *lis3mdl = nullptr;
-static LSM6DSL *lsm6dsl = nullptr;
-static TMP117 *tmp117 = nullptr;
-static SHTC3 *shtc3 = nullptr;
+// devices
+static HALGPIODevice *flash_cs = nullptr;
+static HALSPIDevice *flash_spi = nullptr;
+
+// peripherals
 static LED *ledOne = nullptr;
 static LED *ledTwo = nullptr;
 static LED *wizLED = nullptr;
-static HALUARTDevice *uartDev = nullptr;
-static HALI2CDevice *i2cDev = nullptr;
-static HALSPIDevice *wizSPI = nullptr;
-static HALGPIODevice *wizCS = nullptr;
-static HALSPIDevice *flashSPI = nullptr;
-
-static W5500 *w5500 = nullptr;
-static IPv4UDPStack *stack = nullptr;
-static IPv4UDPSocket *sock = nullptr;
-
+static W25Q* w25q = nullptr;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 // Don't do the variable arguments stuff to save time
 // I don't actually know how much time this saves
+/*
+int __io_putchar(int ch) {
+#ifdef DEBUG
+	return ITM_SendChar(ch);
+#endif
+	return -1;
+}
+*/
+/*
+int _write(int fd, char* buf, int len) {
+	for (int i = 0; i < len; i++) {
+		ITM_SendChar(buf[i]);
+	}
+	return len;
+}
+*/
+
 void swprint(const char* msg) {
 #ifdef DEBUG
 	int len = strlen(msg);
 	for (int i = 0; i < len; i++) {
 		ITM_SendChar(msg[i]);
+	}
+#endif
+}
+
+void swnprint(const uint8_t* buf, int len) {
+#ifdef DEBUG
+	for (int i = 0; i < len; i++) {
+		ITM_SendChar(buf[i]);
 	}
 #endif
 }
@@ -195,407 +193,69 @@ RetType init_led_task(void*) {
 }
 
 
-RetType i2cDevPollTask(void *) {
+RetType flash_spi_poll_task(void *) {
     RESUME();
-    CALL(i2cDev->poll());
+    CALL(flash_spi->poll());
     RESET();
     return RET_SUCCESS;
 }
 
-RetType spiDevPollTask(void *) {
-    RESUME();
-    CALL(wizSPI->poll());
-//    CALL(flashSPI->poll());
-    RESET();
-    return RET_SUCCESS;
+static led_flash_t flash_activity = {.led = &ledOne, .on_time = 10, .period = 500};
+
+RetType w25q_test_task(void*) {
+	RESUME();
+	RetType ret;
+
+	sched_start(&flash_led_task, &flash_activity);
+	flash_activity.period = 50;
+
+	swprint("Initializing W25Q\n");
+	static W25Q w25q_local("Flash memory", *flash_spi, *flash_cs);
+	ret = CALL(w25q_local.init());
+	if (RET_SUCCESS != ret) {
+		swprint("#RED#Failed to initialize W25Q\n");
+		goto w25q_test_end;
+	}
+
+	w25q = &w25q_local;
+	swprintf("W25Q 0x%6x with %d blocks of %d bytes each\n",
+			w25q->device_id, w25q->getNumBlocks(), w25q->getBlockSize());
+
+	// set up input
+	uint8_t page_in[256];
+	memset(page_in, '\0', sizeof(page_in));
+	const char text[] = "Testing text for page write";
+	strncpy((char*) page_in, text, sizeof(text));
+	// write to this block
+	uint32_t address = 0xFFFF;
+
+/*
+	swprintf("Page in:\n\t%256s\n", (char*) page_in);
+	swprintf("Writing to page 0x%4x\n", address);
+	ret = CALL(w25q->write(address, page_in));
+	if (RET_SUCCESS != ret) {
+		swprint("#RED#Failed to write page\n");
+		goto w25q_test_end;
+	}
+
+	// set up output
+	uint8_t page_out[256];
+	memset(page_out, '\0', sizeof(page_out));
+	// read from page;
+	swprintf("Reading from page 0x%4x\n", address);
+	ret = CALL(w25q->read(address, page_out));
+	if (RET_SUCCESS != ret) {
+		swprint("#RED#Failed to read page\n");
+		goto w25q_test_end;
+	}
+	swprintf("Page out:\n\t%256s\n", (char*) page_out);
+*/
+	w25q_test_end:
+	swprint("Exiting flash test task\n");
+	flash_activity.period = 500;
+	RESET();
+	return RET_ERROR;
 }
-
-RetType bmpTask(void *) {
-    RESUME();
-
-    static BMP3XX_DATA_STRUCT(bmp_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = bmp_data.id;
-
-    RetType ret = CALL(bmp3XX->getPressureAndTemp(&bmp_data.pressure, &bmp_data.temperature));
-    if (ret == RET_ERROR) {
-    	swprint("Failed to get BMP data\n");
-        RESET();
-        return RET_SUCCESS;
-    }
-
-    swprintf("BMP\n\tP: %3.2f Pa\n\tT: %3.2f C\n", bmp_data.pressure, bmp_data.temperature);
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&bmp_data), sizeof(bmp_data), &addr));
-
-    RESET();
-    return RET_SUCCESS;
-}
-
-RetType tmpTask(void *) {
-    RESUME();
-
-    static char buffer[100];
-    static TMP117_DATA_STRUCT(tmp_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = tmp_data.id;
-
-    RetType ret = CALL(tmp117->readTempCelsius(&tmp_data.temperature));
-    if (ret == RET_ERROR) {
-        // CALL(uartDev->write((uint8_t *) "Failed to get TMP data\r\n", 9));
-        RESET();
-        return RET_SUCCESS;
-    }
-
-//    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
-    // CALL(uartDev->write((uint8_t *) buffer, size));
-
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&tmp_data), sizeof(tmp_data), &addr));
-
-    RESET();
-    return RET_SUCCESS;
-}
-
-RetType adxlTask(void *) {
-    RESUME();
-    static ADXL375_DATA_STRUCT(adxl_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = adxl_data.id;
-
-    RetType ret = CALL(adxl375->readXYZ(&adxl_data.x_accel, &adxl_data.y_accel, &adxl_data.z_accel));
-    if (ret != RET_SUCCESS) {
-        // CALL(uartDev->write((uint8_t *) "Failed to get ADXL data\r\n", 24)
-        RESET();
-        return RET_SUCCESS;
-    }
-
-//    static char buffer[100];
-//    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
-
-    // Use below if you want to print the values in multiple lines
-    // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
-
-    // CALL(uartDev->write((uint8_t *) buffer, size));
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&adxl_data), sizeof(adxl_data), &addr));
-
-    RESET();
-    return RET_SUCCESS;
-}
-
-RetType lsmTask(void *) {
-    RESUME();
-    static LSM6DSL_DATA_STRUCT(lsm_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = lsm_data.id;
-
-    RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
-    if (ret != RET_SUCCESS) {
-        // CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Accel Axes\r\n", 34));
-        RESET();
-        return RET_SUCCESS;
-    }
-
-    ret = CALL(lsm6dsl->getGyroAxes(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
-    if (ret != RET_SUCCESS) {
-        // CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Gyro Axes\r\n", 34));
-        RESET();
-        return RET_SUCCESS;
-    }
-
-//    static char buffer[120];
-//    size_t size = snprintf(buffer, 120,
-//                           "LSM6DSL: \r\n\tAccel: \r\n\t\tX: %ld m/s^2\r\n\t\tY: %ld m/s^2\r\n\t\tZ: %ld m/s^2\r\n\tGyro: \r\n\t\tX: %ld dps\r\n\t\tY: %ld dps\r\n\t\tZ: %ld dps\r\n",
-//                           accX, accY, accZ, gyroX, gyroY, gyroZ);
-    // CALL(uartDev->write((uint8_t *) buffer, size));
-
-
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lsm_data), sizeof(lsm_data), &addr));
-
-    RESET();
-    return RET_SUCCESS;
-}
-
-RetType lisTask(void *) {
-    RESUME();
-    static LIS3MDL_DATA_STRUCT(lis_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = lis_data.id;
-
-    RetType ret = CALL(
-            lis3mdl->pullSensorData(&lis_data.x_mag, &lis_data.y_mag, &lis_data.z_mag, &lis_data.temperature));
-    if (ret != RET_SUCCESS) {
-        // CALL(uartDev->write((uint8_t *) "LIS3MDL: Failed to get sensor data\r\n", 35));
-        RESET();
-        return RET_SUCCESS;
-    }
-
-//    static char buffer[100];
-//    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ,
-//                           temp);
-    // CALL(uartDev->write((uint8_t *) buffer, size));
-
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lis_data), sizeof(lis_data), &addr));
-
-
-    RESET();
-    return RET_SUCCESS;
-}
-
-RetType ms5607Task(void *) {
-    RESUME();
-
-    static MS5607_DATA_STRUCT(ms5607_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = ms5607_data.id;
-
-    RetType ret = CALL(ms5607->getPressureTemp(&ms5607_data.pressure, &ms5607_data.temperature));
-    if (ret == RET_ERROR) {
-        // CALL(uartDev->write((uint8_t *) "Failed to get MS5607 data\r\n", 27));
-        RESET();
-        return RET_SUCCESS;
-    }
-
-//    static float altitude = ms5607->getAltitude(pressure, temperature);
-//    static char buffer[100];
-//    size_t size = sprintf(buffer, "MS5607:\r\n\tPressure: %.2f mBar\r\n\tTemperature: %.2f C\r\n\tAltitude: %f\r\n",
-//                          pressure, temperature, altitude);
-    // CALL(uartDev->write((uint8_t *) buffer, size));
-
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&ms5607_data), sizeof(ms5607_data), &addr));
-
-
-    RESET();
-    return RET_SUCCESS;
-}
-
-RetType shtc3Task(void *) {
-    RESUME();
-    static SHTC3_DATA_STRUCT(shtc3_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = shtc3_data.id;
-
-    RetType ret = CALL(shtc3->getHumidityAndTemp(&shtc3_data.temperature, &shtc3_data.humidity));
-    if (RET_ERROR == ret) {
-    	swprint("#RED#SHTC3: Data read fail\n");
-    	goto shtc3_end;
-    }
-    swprintf("SHTC3: T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
-
-    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&shtc3_data), sizeof(shtc3_data), &addr));
-    if (RET_ERROR == ret) {
-    	swprint("#RED#SHTC3: Socket send fail\n");
-    	goto shtc3_end;
-    }
-
-    shtc3_end:
-	SLEEP(1000);
-    RESET();
-    return RET_SUCCESS;
-}
-
-static led_flash_t led1_flash = {.led = &ledOne, .on_time = 100, .period = 250};
-static led_flash_t led2_flash = {.led = &ledTwo, .on_time = 100, .period = 250};
-static led_flash_t wiz_flash = {.led = &wizLED, .on_time = 100, .period = 250};
-
-RetType sensorInitTask(void *) {
-    RESUME();
-
-    tid_t flash1 = sched_start(flash_led_task, &led1_flash);
-    tid_t flash2 = sched_start(flash_led_task, &led2_flash);
-
-    swprint("Initializing TMP117\n");
-    static TMP117 tmp(*i2cDev);
-    tmp117 = &tmp;
-    tid_t tmpTID = -1;
-    RetType tmp3Ret = CALL(tmp117->init());
-    if (tmp3Ret != RET_ERROR) {
-        tmpTID = sched_start(tmpTask, {});
-
-        if (-1 == tmpTID) {
-			swprint("#RED#SHTC3 task start failed\n");
-        } else {
-			swprint("#GRN#SHTC3 task start OK\n");
-        }
-    } else {
-		swprint("#RED#SHTC3 init failed\n");
-    }
-
-    swprint("Initializing LSM6DSL\n");
-    static LSM6DSL lsm(*i2cDev);
-    lsm6dsl = &lsm;
-    tid_t lsmTID = -1;
-    RetType lsm6dslRet = CALL(lsm6dsl->init(LSM6DSL_I2C_ADDR_SECONDARY));
-    if (lsm6dslRet != RET_ERROR) {
-        lsmTID = sched_start(lsmTask, {});
-
-        if (-1 == lsmTID) {
-			swprint("#RED#LSM6DSL task start failed\n");
-        } else {
-			swprint("#GRN#LSM6DSL task start OK\n");
-        }
-    } else {
-		swprint("#RED#LSM6DSL init failed\n");
-    }
-
-    swprint("Initializing MS5607\n");
-    static MS5607 ms5(*i2cDev);
-    ms5607 = &ms5;
-    tid_t ms5TID = -1;
-    RetType ms5Ret = CALL(ms5607->init());
-    if (ms5Ret != RET_ERROR) {
-        ms5TID = sched_start(ms5607Task, {});
-
-        if (-1 == ms5TID) {
-			swprint("#RED#MS5607 task start failed\n");
-        } else {
-			swprint("#GRN#MS5607 task start OK\n");
-        }
-    } else {
-		swprint("#RED#MS5607 init failed\n");
-    }
-
-    swprint("Initializing ADXL375\n");
-    static ADXL375 adxl(*i2cDev);
-    adxl375 = &adxl;
-    tid_t adxl375TID = -1;
-    RetType adxl375Ret = CALL(adxl375->init(0x1D));
-    if (adxl375Ret != RET_ERROR) {
-        adxl375TID = sched_start(adxlTask, {});
-
-        if (-1 == adxl375TID) {
-			swprint("#RED#ADXL375 task start failed\n");
-        } else {
-			swprint("#GRN#ADXL375 task start OK\n");
-        }
-    } else {
-		swprint("#RED#ADXL375 init \n");
-    }
-
-    swprint("Initializing LIS3MDL\n");
-    static LIS3MDL lis(*i2cDev);
-    lis3mdl = &lis;
-    tid_t lisTID = -1;
-    RetType lis3mdlRet = CALL(lis3mdl->init(LIS3MDL_I2C_ADDR_PRIMARY));
-    if (lis3mdlRet != RET_ERROR) {
-        lisTID = sched_start(lisTask, {});
-
-        if (-1 == lisTID) {
-			swprint("#RED#LIS3MDL task start failed\n");
-        } else {
-			swprint("#GRN#LIS3MDL task start OK\n");
-        }
-    } else {
-		swprint("#RED#LIS3MDL init failed\n");
-    }
-
-    swprint("Initializing SHTC3\n");
-    static SHTC3 sht(*i2cDev);
-    shtc3 = &sht;
-    tid_t shtTID = -1;
-    RetType sht3mdlRet = CALL(shtc3->init(0x70));
-    if (sht3mdlRet != RET_ERROR) {
-        shtTID = sched_start(shtc3Task, {});
-
-        if (-1 == shtTID) {
-			swprint("#RED#SHTC3 task start failed\n");
-        } else {
-			swprint("#GRN#SHTC3 task start OK\n");
-        }
-    } else {
-		swprint("#RED#SHTC3 init failed\n");
-    }
-
-    led1_flash.period = 1000;
-    led2_flash.period = 1000;
-
-    swprint("Finished initializing sensors\n");
-
-    RESET();
-    return RET_ERROR;
-}
-
-RetType netStackInitTask(void *) {
-    RESUME();
-
-	sched_start(flash_led_task, &wiz_flash);
-
-    static W5500 wiznet(*wizSPI, *wizCS);
-    w5500 = &wiznet;
-
-    static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
-                              255, 255, 255, 0,
-                                     *w5500};
-    stack = &iPv4UdpStack;
-
-    static uint8_t ip_addr[4] = {192, 168, 1, 10};
-    static uint8_t subnet_mask[4] = {255, 255, 255, 0};
-    static uint8_t gateway_addr[4] = {192, 168, 1, 1};
-    static uint8_t mac_addr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    static IPv4UDPSocket::addr_t addr;
-
-    sock = stack->get_socket();
-    addr.ip[0] = addr.ip[1] = addr.ip[2] = addr.ip[3] = 0;
-    addr.port = 8000;
-    sock->bind(addr); // TODO: Error handling
-
-    ipv4::IPv4Addr_t temp_addr;
-    ipv4::IPv4Address(10, 10, 10, 69, &temp_addr);
-    stack->add_multicast(temp_addr);
-
-
-    swprint("Initializing W5500\n");
-    RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
-    if (RET_SUCCESS != ret) {
-		swprint("#RED#W5500 init failed\n");
-        goto netStackInitDone;
-    } else {
-		swprint("#GRN#W5500 init OK\n");
-    }
-
-
-    swprint("Initializing network stack\n");
-    ret = stack->init();
-    if (RET_SUCCESS != ret) {
-    	swprint("#RED#Net stack init failed");
-        goto netStackInitDone;
-    } else {
-		swprint("#GRN#Net stack init OK\n");
-    }
-
-    swprint("Successfully initialized network interface\n");
-    netStackInitDone:
-    wiz_flash.period = 1000;
-    RESET();
-    return RET_ERROR; // Kill task
-}
-
 /* USER CODE END 0 */
 
 /**
@@ -604,7 +264,6 @@ RetType netStackInitTask(void *) {
   */
 int main(void) {
     /* USER CODE BEGIN 1 */
-
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -630,65 +289,44 @@ int main(void) {
     MX_I2C3_Init();
     MX_UART5_Init();
     /* USER CODE BEGIN 2 */
-    HALUARTDevice uart("UART", &huart5);
-    RetType ret = uart.init();
-
-    if (ret != RET_SUCCESS) {
-    	swprint("Failed to init UART\n");
-        return -1;
-    }
-    uartDev = &uart;
-    swprint("UART Initalized\n");
-
+    RetType ret;
+    // Initialize scheduler
     if (!sched_init(&HAL_GetTick)) {
     	swprint("Failed to init scheduler\n");
         return -1;
     }
 
     // Initialize peripherals
-    HALGPIODevice ledOneGPIO("LED 1 GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
-    ret = ledOneGPIO.init();
-    LED ledOneLocal(ledOneGPIO);
-    ledOneLocal.setState(LED_OFF);
+    static HALGPIODevice ledOneGPIO("LED 1 GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
+    static LED ledOneLocal(ledOneGPIO);
     ledOne = &ledOneLocal;
 
-    HALGPIODevice ledTwoGPIO("LED 2 GPIO", PA2_LED_GPIO_Port, PA2_LED_Pin);
-    ret = ledTwoGPIO.init();
-    LED ledTwoLocal(ledTwoGPIO);
-    ledOneLocal.setState(LED_OFF);
+    static HALGPIODevice ledTwoGPIO("LED 2 GPIO", PA2_LED_GPIO_Port, PA2_LED_Pin);
+    static LED ledTwoLocal(ledTwoGPIO);
     ledTwo = &ledTwoLocal;
 
-    HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
-    ret = wiznetLEDGPIO.init();
-    LED wiznetLED(wiznetLEDGPIO);
-    wiznetLED.setState(LED_ON);
+    static HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
+    static LED wiznetLED(wiznetLEDGPIO);
     wizLED = &wiznetLED;
 
-    HALGPIODevice wizChipSelect("Wiznet CS", ETH_CS_GPIO_Port, ETH_CS_Pin);
-    ret = wizChipSelect.init();
-    wizCS = &wizChipSelect;
-    wizChipSelect.set(1);
+    static HALGPIODevice flash_cs_local("Flash CS", WS25_CS_GPIO_Port, WS25_CS_Pin);
+    flash_cs = &flash_cs_local;
 
-    static HALI2CDevice i2c("HAL I2C3", &hi2c3);
-    ret = i2c.init();
+    static HALSPIDevice flash_spi_local("Flash SPI", &hspi2);
+    ret = flash_spi_local.init();
     if (RET_SUCCESS != ret) {
-    	swprint("Failed to init I2C1\n");
-        return -1;
-    }
-	i2cDev = &i2c;
-
-    static HALSPIDevice wizSpi("WIZNET SPI", &hspi1);
-    ret = wizSpi.init();
-    if (RET_SUCCESS != ret) {
-    	swprint("Failed to init SPI\n");
+    	swprint("Failed to init flash SPI device");
     	return -1;
     }
-    wizSPI = &wizSpi;
+    flash_spi = &flash_spi_local;
 
-    sched_start(i2cDevPollTask, {});
-    sched_start(spiDevPollTask, {});
-    sched_start(netStackInitTask, {});
-    sched_start(sensorInitTask, {});
+
+    swprint("Starting tasks\n");
+    // start initialization tasks
+
+    sched_start(&flash_spi_poll_task, {});
+//    sched_start(&print_heartbeat_task, {});
+    sched_start(&w25q_test_task, {});
 
     /* USER CODE END 2 */
 
