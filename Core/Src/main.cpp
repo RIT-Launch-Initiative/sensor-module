@@ -112,6 +112,7 @@ static HALI2CDevice *i2cDev = nullptr;
 static HALSPIDevice *wizSPI = nullptr;
 static HALGPIODevice *wizCS = nullptr;
 static HALGPIODevice *wizRST = nullptr;
+static HALGPIODevice *wizLEDGPIO = nullptr;
 static HALSPIDevice *flashSPI = nullptr;
 
 static Wiznet *w5500 = nullptr;
@@ -697,7 +698,9 @@ int main(void) {
 
     HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
     ret = wiznetLEDGPIO.init();
-    LED wiznetLED(wiznetLEDGPIO);
+    wizLEDGPIO = &wiznetLEDGPIO;
+
+    LED wiznetLED(*wizLEDGPIO);
     wiznetLED.setState(LED_ON);
     wizLED = &wiznetLED;
 
