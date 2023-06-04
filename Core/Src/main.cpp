@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "swdebug.h"
+#include "device/platforms/stm32/swdebug.h"
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
@@ -95,73 +95,24 @@ static W25Q* w25q = nullptr;
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void swprint(const char* msg) {
-#ifdef DEBUG
-    int len = strlen(msg);
-    for (int i = 0; i < len; i++) {
-        ITM_SendChar(msg[i]);
-    }
-#endif
-}
 
-// send stuff down serial wire out if DEBUG flag set
-// Do not send a message larger than 256 bytes
-int swprintf(const char* fmt, ...) {
-#ifdef DEBUG
-    va_list ap;
-    va_start(ap, fmt);
-    char msg[256];
-    int status = vsnprintf(msg, 256, fmt, ap);
-    va_end(ap);
-
-    if (status > 0) {
-        for (int i = 0; i < status; i++) {
-            ITM_SendChar(msg[i]);
-        }
-    }
-
-    return status;
-#else
-    return 0;
-#endif
-}
-
-void swprintx(const char* leader, const uint8_t* bytes, size_t len) {
-#ifdef DEBUG
-    swprint(leader);
-    for (int i = 0; i < len; i++) {
-        swprintf("%02X ", bytes[i]);
-    }
-#endif
-}
-/*
 RetType print_heartbeat_task(void*) {
 	RESUME();
 	static int i = 0;
-	swprintf("Ping %d\n", i++);
+	swprintf("#GRN#Heartbeat %d\n", i++);
 	SLEEP(1000);
 	RESET();
 	return RET_SUCCESS;
 }
-*/
 
-RetType flash_led_task(void* params) {
-    led_flash_t* arg = ((led_flash_t*) params);
-    LED* task_led = *(arg->led);
+
+RetType flash_led_task(void* task_led) {
+    LED* led = *((LED **) task_led);
 
 	RESUME();
 
-	if (NULL != task_led) {
-		if ((arg -> on) && (arg->period - arg->on_time > 0)) {
-			task_led->setState(LED_OFF);
-			arg->on = false;
-			SLEEP(arg->period - arg->on_time);
-		} else if (arg->on_time > 0) {
-			task_led->setState(LED_ON);
-			arg->on = true;
-			SLEEP(arg->on_time);
-		}
-	}
+    CALL(led->flash());
+
 	RESET();
 	return RET_SUCCESS;
 }
@@ -173,8 +124,12 @@ RetType init_led_task(void*) {
 	CALL(ledTwo->init());
 	CALL(wizLED->init());
 
+    CALL(ledOne->set_state(LED_OFF));
+    CALL(ledTwo->set_state(LED_OFF));
+    CALL(wizLED->set_state(LED_OFF));
+
 	RESET();
-	return RET_ERROR;
+	return RET_ERROR; // kill when done
 }
 
 RetType w25q_poll_task(void *) {
@@ -191,14 +146,12 @@ RetType flash_spi_poll_task(void *) {
     return RET_SUCCESS;
 }
 
-static led_flash_t flash_activity = {.led = &ledOne, .on_time = 10, .period = 500};
-
 RetType w25q_test_task(void*) {
 	RESUME();
 	RetType ret;
 
-	sched_start(&flash_led_task, &flash_activity);
-	flash_activity.period = 50;
+    ledOne->set_flash(10, 50);
+    sched_start(&flash_led_task, &ledOne);
 
 	swprint("Initializing W25Q\n");
 	static W25Q w25q_local("Flash memory", *flash_spi, *flash_cs);
@@ -244,7 +197,7 @@ RetType w25q_test_task(void*) {
 */
 	w25q_test_end:
 	swprint("Exiting flash test task\n");
-	flash_activity.period = 500;
+    ledOne->set_flash(20, 1000);
 	RESET();
 	return RET_ERROR;
 }
@@ -316,8 +269,9 @@ int main(void) {
     swprint("Starting tasks: reporting inside SPI functions\n");
     // start initialization tasks
 
+    sched_start(&init_led_task, {});
     sched_start(&flash_spi_poll_task, {});
-//    sched_start(&print_heartbeat_task, {});
+    sched_start(&print_heartbeat_task, {});
     sched_start(&w25q_test_task, {});
 
     /* USER CODE END 2 */
