@@ -21,9 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
+#include "swdebug.h"
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_SPIDevice.h"
@@ -47,7 +45,9 @@ typedef struct {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#ifndef DEBUG
 #define DEBUG
+#endif
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -94,39 +94,13 @@ static W25Q* w25q = nullptr;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-// Don't do the variable arguments stuff to save time
-// I don't actually know how much time this saves
-/*
-int __io_putchar(int ch) {
-#ifdef DEBUG
-	return ITM_SendChar(ch);
-#endif
-	return -1;
-}
-*/
-/*
-int _write(int fd, char* buf, int len) {
-	for (int i = 0; i < len; i++) {
-		ITM_SendChar(buf[i]);
-	}
-	return len;
-}
-*/
 
 void swprint(const char* msg) {
 #ifdef DEBUG
-	int len = strlen(msg);
-	for (int i = 0; i < len; i++) {
-		ITM_SendChar(msg[i]);
-	}
-#endif
-}
-
-void swnprint(const uint8_t* buf, int len) {
-#ifdef DEBUG
-	for (int i = 0; i < len; i++) {
-		ITM_SendChar(buf[i]);
-	}
+    int len = strlen(msg);
+    for (int i = 0; i < len; i++) {
+        ITM_SendChar(msg[i]);
+    }
 #endif
 }
 
@@ -134,24 +108,33 @@ void swnprint(const uint8_t* buf, int len) {
 // Do not send a message larger than 256 bytes
 int swprintf(const char* fmt, ...) {
 #ifdef DEBUG
-	va_list ap;
-	va_start(ap, fmt);
-	char msg[256];
-	int status = vsnprintf(msg, 256, fmt, ap);
-	va_end(ap);
+    va_list ap;
+    va_start(ap, fmt);
+    char msg[256];
+    int status = vsnprintf(msg, 256, fmt, ap);
+    va_end(ap);
 
-	if (status > 0) {
-		for (int i = 0; i < status; i++) {
-			ITM_SendChar(msg[i]);
-		}
-	}
+    if (status > 0) {
+        for (int i = 0; i < status; i++) {
+            ITM_SendChar(msg[i]);
+        }
+    }
 
-	return status;
+    return status;
 #else
-	return 0;
+    return 0;
 #endif
 }
 
+void swprintx(const char* leader, const uint8_t* bytes, size_t len) {
+#ifdef DEBUG
+    swprint(leader);
+    for (int i = 0; i < len; i++) {
+        swprintf("%02X ", bytes[i]);
+    }
+#endif
+}
+/*
 RetType print_heartbeat_task(void*) {
 	RESUME();
 	static int i = 0;
@@ -160,11 +143,13 @@ RetType print_heartbeat_task(void*) {
 	RESET();
 	return RET_SUCCESS;
 }
+*/
 
 RetType flash_led_task(void* params) {
+    led_flash_t* arg = ((led_flash_t*) params);
+    LED* task_led = *(arg->led);
+
 	RESUME();
-	led_flash_t* arg = ((led_flash_t*) params);
-	LED* task_led = *(arg->led);
 
 	if (NULL != task_led) {
 		if ((arg -> on) && (arg->period - arg->on_time > 0)) {
@@ -192,6 +177,12 @@ RetType init_led_task(void*) {
 	return RET_ERROR;
 }
 
+RetType w25q_poll_task(void *) {
+    RESUME();
+    CALL(w25q->poll());
+    RESET();
+    return RET_SUCCESS;
+}
 
 RetType flash_spi_poll_task(void *) {
     RESUME();
@@ -219,18 +210,19 @@ RetType w25q_test_task(void*) {
 
 	w25q = &w25q_local;
 	swprintf("W25Q 0x%6x with %d blocks of %d bytes each\n",
-			w25q->device_id, w25q->getNumBlocks(), w25q->getBlockSize());
+			w25q->m_dev_id, w25q->getNumBlocks(), w25q->getBlockSize());
+    sched_start(&w25q_poll_task, {});
 
 	// set up input
 	uint8_t page_in[256];
 	memset(page_in, '\0', sizeof(page_in));
 	const char text[] = "Testing text for page write";
 	strncpy((char*) page_in, text, sizeof(text));
+	swprintf("Page in:\n\t%256s\n", (char*) page_in);
 	// write to this block
 	uint32_t address = 0xFFFF;
 
 /*
-	swprintf("Page in:\n\t%256s\n", (char*) page_in);
 	swprintf("Writing to page 0x%4x\n", address);
 	ret = CALL(w25q->write(address, page_in));
 	if (RET_SUCCESS != ret) {
@@ -321,7 +313,7 @@ int main(void) {
     flash_spi = &flash_spi_local;
 
 
-    swprint("Starting tasks\n");
+    swprint("Starting tasks: reporting inside SPI functions\n");
     // start initialization tasks
 
     sched_start(&flash_spi_poll_task, {});
