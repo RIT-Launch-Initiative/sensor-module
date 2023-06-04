@@ -33,13 +33,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef struct {
-	LED** led;
-	bool on;
-	uint32_t on_time;
-	uint32_t period;
-} led_flash_t;
-
 
 /* USER CODE END PTD */
 
@@ -266,13 +259,23 @@ int main(void) {
     flash_spi = &flash_spi_local;
 
 
-    swprint("Starting tasks: reporting inside SPI functions\n");
+    swprint("Starting tasks\n");
     // start initialization tasks
 
     sched_start(&init_led_task, {});
     sched_start(&flash_spi_poll_task, {});
-    sched_start(&print_heartbeat_task, {});
+//    sched_start(&print_heartbeat_task, {});
     sched_start(&w25q_test_task, {});
+
+    uint8_t cmd_bytes[] = {0x9F};
+    uint8_t id_bytes[] = {0x00, 0x00, 0x00};
+    swprint("Attempting manual device ID read\n");
+    HAL_GPIO_WritePin(WS25_CS_GPIO_Port, WS25_CS_Pin, GPIO_PIN_SET);
+    HAL_SPI_Transmit(&hspi2, cmd_bytes, sizeof(cmd_bytes), 200);
+    HAL_SPI_Receive(&hspi2, id_bytes, sizeof(id_bytes), 200);
+    HAL_GPIO_WritePin(WS25_CS_GPIO_Port, WS25_CS_Pin, GPIO_PIN_RESET);
+    swprintx("Read device ID: ", id_bytes, sizeof(id_bytes));
+    swprint("\n");
 
     /* USER CODE END 2 */
 
