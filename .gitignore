@@ -2,5 +2,5 @@
 .vscode
 .project
 build/
-
+cmake-build-debug/
 .vs/
