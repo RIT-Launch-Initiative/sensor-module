@@ -570,7 +570,7 @@ RetType wizSendTestTask(void *) {
     addr.ip[0] = 10;
     addr.ip[1] = 10;
     addr.ip[2] = 10;
-    addr.ip[3] = 1;
+    addr.ip[3] = 96;
     addr.port = 8000;
 
     static uint8_t buff[7] = {'L', 'a', 'u', 'n', 'c', 'h', '!'};
@@ -586,7 +586,7 @@ RetType netStackInitTask(void *) {
     static Wiznet wiznet(*wizSPI, *wizCS, *wizRST, *wizLED);
     w5500 = &wiznet;
 
-    static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
+    static IPv4UDPStack iPv4UdpStack{10, 10, 10, 69, \
                               255, 255, 255, 0,
                                      *w5500};
     stack = &iPv4UdpStack;
