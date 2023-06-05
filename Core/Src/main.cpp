@@ -76,7 +76,10 @@ static void MX_UART5_Init(void);
 /* USER CODE BEGIN PFP */
 // devices
 static HALGPIODevice *flash_cs = nullptr;
+static HALGPIODevice *flash_hold = nullptr;
+static HALGPIODevice *flash_wp = nullptr;
 static HALSPIDevice *flash_spi = nullptr;
+
 
 // peripherals
 static LED *ledOne = nullptr;
@@ -120,7 +123,7 @@ RetType flash_led_task(void* task_led) {
 
 	RESUME();
 
-    CALL(led->flash());
+//    CALL(led->flash());
 
 	RESET();
 	return RET_SUCCESS;
@@ -133,9 +136,9 @@ RetType init_led_task(void*) {
 	CALL(ledTwo->init());
 	CALL(wizLED->init());
 
-    CALL(ledOne->set_state(LED_OFF));
-    CALL(ledTwo->set_state(LED_OFF));
-    CALL(wizLED->set_state(LED_OFF));
+//    CALL(ledOne->set_state(LED_OFF));
+//    CALL(ledTwo->set_state(LED_OFF));
+//    CALL(wizLED->set_state(LED_OFF));
 
 	RESET();
 	return RET_ERROR; // kill when done
@@ -159,21 +162,20 @@ RetType w25q_test_task(void*) {
 	RESUME();
 	RetType ret;
 
-    ledOne->set_flash(10, 50);
+//    ledOne->set_flash(10, 50);
     sched_start(&flash_led_task, &ledOne);
+//    sched_start(&w25q_poll_task, {});
 
 	swprint("Initializing W25Q\n");
-	static W25Q w25q_local("Flash memory", *flash_spi, *flash_cs);
+	static W25Q w25q_local(*flash_spi, *flash_cs);
 	ret = CALL(w25q_local.init());
 	if (RET_SUCCESS != ret) {
 		swprint("#RED#Failed to initialize W25Q\n");
 		goto w25q_test_end;
 	}
 
-	w25q = &w25q_local;
-	swprintf("W25Q 0x%6x with %d blocks of %d bytes each\n",
-			w25q->m_dev_id, w25q->getNumBlocks(), w25q->getBlockSize());
-    sched_start(&w25q_poll_task, {});
+//	swprintf("W25Q 0x%6x with %d blocks of %d bytes each\n",
+//			w25q->m_dev_id, w25q->getNumBlocks(), w25q->getBlockSize());
 
 	// set up input
 	uint8_t page_in[256];
@@ -183,30 +185,47 @@ RetType w25q_test_task(void*) {
 	swprintf("Page in:\n\t%256s\n", (char*) page_in);
 	// write to this block
 	uint32_t address = 0xFFFF;
+    static uint8_t buff[1000] = {0};
+    int i = 0;
+    while (i < 1000) {
+        buff[i++] = i;
+    }
 
-/*
-	swprintf("Writing to page 0x%4x\n", address);
-	ret = CALL(w25q->write(address, page_in));
-	if (RET_SUCCESS != ret) {
-		swprint("#RED#Failed to write page\n");
-		goto w25q_test_end;
-	}
+//    swprint("Writing to page\n");
+    ret = CALL(w25q_local.write(address, buff));
 
-	// set up output
-	uint8_t page_out[256];
-	memset(page_out, '\0', sizeof(page_out));
-	// read from page;
-	swprintf("Reading from page 0x%4x\n", address);
-	ret = CALL(w25q->read(address, page_out));
-	if (RET_SUCCESS != ret) {
-		swprint("#RED#Failed to read page\n");
-		goto w25q_test_end;
-	}
-	swprintf("Page out:\n\t%256s\n", (char*) page_out);
-*/
+    static uint8_t buff2[1000] = {0};
+
+    swprint("Reading from page\n");
+    ret = CALL(w25q_local.read(address, buff2));
+
+    swprint("Page out:\n");
+    for (int i = 0; i < w25q_local.getBlockSize(); i++) {
+        swprintf("%d ", buff2[i]);
+    }
+
+//	swprintf("Writing to page 0x%4x\n", address);
+//	ret = CALL(w25q->write(address, page_in));
+//	if (RET_SUCCESS != ret) {
+//		swprint("#RED#Failed to write page\n");
+//		goto w25q_test_end;
+//	}
+//
+//	// set up output
+//	uint8_t page_out[256];
+//	memset(page_out, '\0', sizeof(page_out));
+//	// read from page;
+//	swprintf("Reading from page 0x%4x\n", address);
+//	ret = CALL(w25q->read(address, page_out));
+//	if (RET_SUCCESS != ret) {
+//		swprint("#RED#Failed to read page\n");
+//		goto w25q_test_end;
+//	}
+//	swprintf("Page out:\n\t%256s\n", (char*) page_out);
+
 	w25q_test_end:
 	swprint("Exiting flash test task\n");
-    ledOne->set_flash(20, 1000);
+//    ledOne->set_flash(20, 1000);
 	RESET();
 	return RET_ERROR;
 }
@@ -252,18 +271,25 @@ int main(void) {
 
     // Initialize peripherals
     static HALGPIODevice ledOneGPIO("LED 1 GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
+    ret = ledOneGPIO.init();
     static LED ledOneLocal(ledOneGPIO);
+    ret = ledOneLocal.init();
     ledOne = &ledOneLocal;
 
     static HALGPIODevice ledTwoGPIO("LED 2 GPIO", PA2_LED_GPIO_Port, PA2_LED_Pin);
+    ret = ledTwoGPIO.init();
     static LED ledTwoLocal(ledTwoGPIO);
+    ret = ledTwoLocal.init();
     ledTwo = &ledTwoLocal;
 
     static HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
+    ret = wiznetLEDGPIO.init();
     static LED wiznetLED(wiznetLEDGPIO);
+    ret = wiznetLED.init();
     wizLED = &wiznetLED;
 
     static HALGPIODevice flash_cs_local("Flash CS", WS25_CS_GPIO_Port, WS25_CS_Pin);
+    ret = flash_cs_local.init();
     flash_cs = &flash_cs_local;
 
     static HALSPIDevice flash_spi_local("Flash SPI", &hspi2);
