@@ -192,7 +192,7 @@ RetType w25q_test_task(void*) {
 	RetType ret;
 
 //    ledOne->set_flash(10, 50);
-    sched_start(&flash_led_task, &ledOne);
+//    sched_start(&flash_led_task, &ledOne);
 //    sched_start(&w25q_poll_task, {});
 
 	swprint("Initializing W25Q\n");
@@ -268,8 +268,8 @@ RetType i2cDevPollTask(void *) {
 
 RetType spiDevPollTask(void *) {
     RESUME();
-    CALL(wizSPI->poll());
-//    CALL(flashSPI->poll());
+//    CALL(wizSPI->poll());
+    CALL(flashSPI->poll());
     RESET();
     return RET_SUCCESS;
 }
@@ -770,6 +770,14 @@ int main(void) {
     }
     flash_spi = &flash_spi_local;
 
+    static HALI2CDevice i2c("HAL I2C3", &hi2c3);
+    ret = i2c.init();
+    if (RET_SUCCESS != ret) {
+    	swprint("Failed to init I2C1\n");
+        return -1;
+    }
+	i2cDev = &i2c;
+
     swprint("Starting tasks\n");
     // start initialization tasks
 
@@ -777,6 +785,7 @@ int main(void) {
     sched_start(&flash_spi_poll_task, {});
 //    sched_start(&print_heartbeat_task, {});
     sched_start(&w25q_test_task, {});
+
 
     uint8_t cmd_bytes[] = {0x9F};
     uint8_t id_bytes[] = {0x00, 0x00, 0x00};
