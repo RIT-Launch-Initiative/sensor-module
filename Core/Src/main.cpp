@@ -113,9 +113,9 @@ static HALSPIDevice *wizSPI = nullptr;
 static HALGPIODevice *wizCS = nullptr;
 static HALSPIDevice *flashSPI = nullptr;
 
-static W5500 *w5500 = nullptr;
-static IPv4UDPStack *stack = nullptr;
-static IPv4UDPSocket *sock = nullptr;
+//static W5500 *w5500 = nullptr;
+//static IPv4UDPStack *stack = nullptr;
+//static IPv4UDPSocket *sock = nullptr;
 
 /* USER CODE END PFP */
 
@@ -214,12 +214,12 @@ RetType bmpTask(void *) {
     RESUME();
 
     static BMP3XX_DATA_STRUCT(bmp_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = bmp_data.id;
+//    static IPv4UDPSocket::addr_t addr;
+//    addr.ip[0] = 10;
+//    addr.ip[1] = 10;
+//    addr.ip[2] = 10;
+//    addr.ip[3] = 10;
+//    addr.port = bmp_data.id;
 
     RetType ret = CALL(bmp3XX->getPressureAndTemp(&bmp_data.pressure, &bmp_data.temperature));
     if (ret == RET_ERROR) {
@@ -240,12 +240,12 @@ RetType tmpTask(void *) {
 
     static char buffer[100];
     static TMP117_DATA_STRUCT(tmp_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = tmp_data.id;
+//    static IPv4UDPSocket::addr_t addr;
+//    addr.ip[0] = 10;
+//    addr.ip[1] = 10;
+//    addr.ip[2] = 10;
+//    addr.ip[3] = 10;
+//    addr.port = tmp_data.id;
 
     RetType ret = CALL(tmp117->readTempCelsius(&tmp_data.temperature));
     if (ret == RET_ERROR) {
@@ -268,11 +268,11 @@ RetType adxlTask(void *) {
     RESUME();
     static ADXL375_DATA_STRUCT(adxl_data);
     static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = adxl_data.id;
+//    addr.ip[0] = 10;
+//    addr.ip[1] = 10;
+//    addr.ip[2] = 10;
+//    addr.ip[3] = 10;
+//    addr.port = adxl_data.id;
 
     RetType ret = CALL(adxl375->readXYZ(&adxl_data.x_accel, &adxl_data.y_accel, &adxl_data.z_accel));
     if (ret != RET_SUCCESS) {
@@ -299,11 +299,11 @@ RetType lsmTask(void *) {
     RESUME();
     static LSM6DSL_DATA_STRUCT(lsm_data);
     static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = lsm_data.id;
+//    addr.ip[0] = 10;
+//    addr.ip[1] = 10;
+//    addr.ip[2] = 10;
+//    addr.ip[3] = 10;
+//    addr.port = lsm_data.id;
 
     RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
     if (ret != RET_SUCCESS) {
@@ -339,11 +339,11 @@ RetType lisTask(void *) {
     RESUME();
     static LIS3MDL_DATA_STRUCT(lis_data);
     static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = lis_data.id;
+//    addr.ip[0] = 10;
+//    addr.ip[1] = 10;
+//    addr.ip[2] = 10;
+//    addr.ip[3] = 10;
+//    addr.port = lis_data.id;
 
     RetType ret = CALL(
             lis3mdl->pullSensorData(&lis_data.x_mag, &lis_data.y_mag, &lis_data.z_mag, &lis_data.temperature));
@@ -373,11 +373,11 @@ RetType ms5607Task(void *) {
 
     static MS5607_DATA_STRUCT(ms5607_data);
     static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = ms5607_data.id;
+//    addr.ip[0] = 10;
+//    addr.ip[1] = 10;
+//    addr.ip[2] = 10;
+//    addr.ip[3] = 10;
+//    addr.port = ms5607_data.id;
 
     RetType ret = CALL(ms5607->getPressureTemp(&ms5607_data.pressure, &ms5607_data.temperature));
     if (ret == RET_ERROR) {
@@ -404,12 +404,12 @@ RetType ms5607Task(void *) {
 RetType shtc3Task(void *) {
     RESUME();
     static SHTC3_DATA_STRUCT(shtc3_data);
-    static IPv4UDPSocket::addr_t addr;
-    addr.ip[0] = 10;
-    addr.ip[1] = 10;
-    addr.ip[2] = 10;
-    addr.ip[3] = 10;
-    addr.port = shtc3_data.id;
+//    static IPv4UDPSocket::addr_t addr;
+//    addr.ip[0] = 10;
+//    addr.ip[1] = 10;
+//    addr.ip[2] = 10;
+//    addr.ip[3] = 10;
+//    addr.port = shtc3_data.id;
 
     RetType ret = CALL(shtc3->getHumidityAndTemp(&shtc3_data.temperature, &shtc3_data.humidity));
     if (RET_ERROR == ret) {
@@ -579,61 +579,61 @@ RetType sensorInitTask(void *) {
 //    return RET_SUCCESS;
 //}
 
-RetType netStackInitTask(void *) {
-    RESUME();
-
-	sched_start(flash_led_task, &wiz_flash);
-
-    static W5500 wiznet(*wizSPI, *wizCS);
-    w5500 = &wiznet;
-
-    static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
-                              255, 255, 255, 0,
-                                     *w5500};
-    stack = &iPv4UdpStack;
-
-    static uint8_t ip_addr[4] = {192, 168, 1, 10};
-    static uint8_t subnet_mask[4] = {255, 255, 255, 0};
-    static uint8_t gateway_addr[4] = {192, 168, 1, 1};
-    static uint8_t mac_addr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    static IPv4UDPSocket::addr_t addr;
-
-    sock = stack->get_socket();
-    addr.ip[0] = addr.ip[1] = addr.ip[2] = addr.ip[3] = 0;
-    addr.port = 8000;
-    sock->bind(addr); // TODO: Error handling
-
-    ipv4::IPv4Addr_t temp_addr;
-    ipv4::IPv4Address(10, 10, 10, 69, &temp_addr);
-    stack->add_multicast(temp_addr);
-
-
-    swprint("Initializing W5500\n");
-    RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
-    if (RET_SUCCESS != ret) {
-		swprint("#RED#W5500 init failed\n");
-        goto netStackInitDone;
-    } else {
-		swprint("#GRN#W5500 init OK\n");
-    }
-
-
-    swprint("Initializing network stack\n");
-    ret = stack->init();
-    if (RET_SUCCESS != ret) {
-    	swprint("#RED#Net stack init failed");
-        goto netStackInitDone;
-    } else {
-		swprint("#GRN#Net stack init OK\n");
-    }
-
-    swprint("Successfully initialized network interface\n");
-
-    netStackInitDone:
-    wiz_flash.period = 1000;
-    RESET();
-    return RET_ERROR; // Kill task
-}
+//RetType netStackInitTask(void *) {
+//    RESUME();
+//
+//	sched_start(flash_led_task, &wiz_flash);
+//
+//    static W5500 wiznet(*wizSPI, *wizCS);
+//    w5500 = &wiznet;
+//
+//    static IPv4UDPStack iPv4UdpStack{10, 10, 10, 1, \
+//                              255, 255, 255, 0,
+//                                     *w5500};
+//    stack = &iPv4UdpStack;
+//
+//    static uint8_t ip_addr[4] = {192, 168, 1, 10};
+//    static uint8_t subnet_mask[4] = {255, 255, 255, 0};
+//    static uint8_t gateway_addr[4] = {192, 168, 1, 1};
+//    static uint8_t mac_addr[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+//    static IPv4UDPSocket::addr_t addr;
+//
+//    sock = stack->get_socket();
+//    addr.ip[0] = addr.ip[1] = addr.ip[2] = addr.ip[3] = 0;
+//    addr.port = 8000;
+//    sock->bind(addr); // TODO: Error handling
+//
+//    ipv4::IPv4Addr_t temp_addr;
+//    ipv4::IPv4Address(10, 10, 10, 69, &temp_addr);
+//    stack->add_multicast(temp_addr);
+//
+//
+//    swprint("Initializing W5500\n");
+//    RetType ret = CALL(wiznet.init(gateway_addr, subnet_mask, mac_addr, ip_addr));
+//    if (RET_SUCCESS != ret) {
+//		swprint("#RED#W5500 init failed\n");
+//        goto netStackInitDone;
+//    } else {
+//		swprint("#GRN#W5500 init OK\n");
+//    }
+//
+//
+//    swprint("Initializing network stack\n");
+//    ret = stack->init();
+//    if (RET_SUCCESS != ret) {
+//    	swprint("#RED#Net stack init failed");
+//        goto netStackInitDone;
+//    } else {
+//		swprint("#GRN#Net stack init OK\n");
+//    }
+//
+//    swprint("Successfully initialized network interface\n");
+//
+//    netStackInitDone:
+//    wiz_flash.period = 1000;
+//    RESET();
+//    return RET_ERROR; // Kill task
+//}
 
 /* USER CODE END 0 */
 
@@ -726,7 +726,7 @@ int main(void) {
 
     sched_start(i2cDevPollTask, {});
     sched_start(spiDevPollTask, {});
-    sched_start(netStackInitTask, {});
+//    sched_start(netStackInitTask, {});
     sched_start(sensorInitTask, {});
 
     /* USER CODE END 2 */
