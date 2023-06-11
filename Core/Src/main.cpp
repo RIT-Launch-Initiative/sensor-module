@@ -110,7 +110,6 @@ static HALUARTDevice *uartDev = nullptr;
 static HALI2CDevice *i2cDev = nullptr;
 static HALSPIDevice *wizSPI = nullptr;
 static HALGPIODevice *wizCS = nullptr;
-static HALSPIDevice *flashSPI = nullptr;
 
 //static W5500 *w5500 = nullptr;
 //static IPv4UDPStack *stack = nullptr;
@@ -187,6 +186,32 @@ RetType flash_spi_poll_task(void *) {
     return RET_SUCCESS;
 }
 
+RetType w25q_read_test_task(void*) {
+    uint32_t address = 0xFFFF;
+	static uint8_t page_in[256];
+
+    RESUME();
+    // set up output
+	uint8_t page_out[256];
+	memset(page_out, '\0', sizeof(page_out));
+	// read from page;
+	swprintf("Reading from page 0x%4x\n", address);
+	RetType ret = CALL(w25q->read(address, page_out));
+	if (RET_SUCCESS != ret) {
+		swprint("#RED#Failed to read page\n");
+	}
+	swprintf("Page out:\n\t%256s\n", (char*) page_out);
+
+    RESET();
+    return RET_SUCCESS;
+}
+
+constexpr void fill_buffer(uint8_t* const buff, size_t fill_size) {
+    for (size_t i = 0; i < fill_size; i++) {
+        buff[i] = i;
+    }
+}
+
 RetType w25q_test_task(void*) {
 	RESUME();
 	RetType ret;
@@ -202,58 +227,31 @@ RetType w25q_test_task(void*) {
 		swprint("#RED#Failed to initialize W25Q\n");
 		goto w25q_test_end;
 	}
+    w25q = &w25q_local;
 
 //	swprintf("W25Q 0x%6x with %d blocks of %d bytes each\n",
 //			w25q->m_dev_id, w25q->getNumBlocks(), w25q->getBlockSize());
 
 	// set up input
-	uint8_t page_in[256];
+	static uint8_t page_in[256];
 	memset(page_in, '\0', sizeof(page_in));
 	const char text[] = "Testing text for page write";
 	strncpy((char*) page_in, text, sizeof(text));
 	swprintf("Page in:\n\t%256s\n", (char*) page_in);
 	// write to this block
 	uint32_t address = 0xFFFF;
-    static uint8_t buff[1000] = {0};
-    int i = 0;
-    while (i < 1000) {
-        buff[i++] = i;
-    }
+    fill_buffer(page_in, 256);
 
-//    swprint("Writing to page\n");
-    ret = CALL(w25q_local.write(address, buff));
-
-    static uint8_t buff2[1000] = {0};
-
-    swprint("Reading from page\n");
-    ret = CALL(w25q_local.read(address, buff2));
-
-    swprint("Page out:\n");
-    for (int i = 0; i < w25q_local.getBlockSize(); i++) {
-        swprintf("%d ", buff2[i]);
-    }
-
-//	swprintf("Writing to page 0x%4x\n", address);
+	swprintf("Writing to page 0x%4x\n", address);
 //	ret = CALL(w25q->write(address, page_in));
-//	if (RET_SUCCESS != ret) {
-//		swprint("#RED#Failed to write page\n");
-//		goto w25q_test_end;
-//	}
-//
-//	// set up output
-//	uint8_t page_out[256];
-//	memset(page_out, '\0', sizeof(page_out));
-//	// read from page;
-//	swprintf("Reading from page 0x%4x\n", address);
-//	ret = CALL(w25q->read(address, page_out));
-//	if (RET_SUCCESS != ret) {
-//		swprint("#RED#Failed to read page\n");
-//		goto w25q_test_end;
-//	}
-//	swprintf("Page out:\n\t%256s\n", (char*) page_out);
+	if (RET_SUCCESS != ret) {
+		swprint("#RED#Failed to write page\n");
+		goto w25q_test_end;
+	}
 
 	w25q_test_end:
 	swprint("Exiting flash test task\n");
+//    sched_start(w25q_read_test_task, {});
 //    ledOne->set_flash(20, 1000);
 	RESET();
 	return RET_ERROR;
@@ -269,7 +267,7 @@ RetType i2cDevPollTask(void *) {
 RetType spiDevPollTask(void *) {
     RESUME();
 //    CALL(wizSPI->poll());
-    CALL(flashSPI->poll());
+    CALL(flash_spi->poll());
     RESET();
     return RET_SUCCESS;
 }
