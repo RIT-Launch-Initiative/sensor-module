@@ -38,18 +38,18 @@
 #include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
-#include "device/peripherals/W5500/W5500.h"
+//#include "device/peripherals/W5500/W5500.h"
 //#include "device/peripherals/wiznet/wiznet.h"
-#include "net/packet/Packet.h"
-#include "net/stack/IPv4UDP/IPv4UDPStack.h"
-#include "net/stack/IPv4UDP/IPv4UDPSocket.h"
+//#include "net/packet/Packet.h"
+//#include "net/stack/IPv4UDP/IPv4UDPStack.h"
+//#include "net/stack/IPv4UDP/IPv4UDPSocket.h"
 
-#include "sched/macros/call.h"
+//#include "sched/macros/call.h"
 
 
 // #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
-
+ 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 typedef struct {
@@ -198,11 +198,12 @@ RetType init_led_task(void*) {
 RetType i2cDevPollTask(void *) {
     RESUME();
     CALL(i2cDev->poll());
+//    swprint("I2C Poll\n");
     RESET();
     return RET_SUCCESS;
 }
 
-RetType spiDevPollTask(void *) {
+    RetType spiDevPollTask(void *) {
     RESUME();
     CALL(wizSPI->poll());
 //    CALL(flashSPI->poll());
@@ -223,12 +224,12 @@ RetType bmpTask(void *) {
 
     RetType ret = CALL(bmp3XX->getPressureAndTemp(&bmp_data.pressure, &bmp_data.temperature));
     if (ret == RET_ERROR) {
-    	swprint("Failed to get BMP data\n");
+//    	swprint("Failed to get BMP data\n");
         RESET();
         return RET_SUCCESS;
     }
 
-    swprintf("BMP\n\tP: %3.2f Pa\n\tT: %3.2f C\n", bmp_data.pressure, bmp_data.temperature);
+//    swprintf("BMP\n\tP: %3.2f Pa\n\tT: %3.2f C\n", bmp_data.pressure, bmp_data.temperature);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&bmp_data), sizeof(bmp_data), &addr));
 
     RESET();
@@ -256,7 +257,7 @@ RetType tmpTask(void *) {
 
 //    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
-    swprintf("TMP117\n\tTemperature: %3.2f C\n", tmp_data.temperature);
+//    swprintf("TMP117\n\tTemperature: %3.2f C\n", tmp_data.temperature);
 
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&tmp_data), sizeof(tmp_data), &addr));
 
@@ -267,7 +268,7 @@ RetType tmpTask(void *) {
 RetType adxlTask(void *) {
     RESUME();
     static ADXL375_DATA_STRUCT(adxl_data);
-    static IPv4UDPSocket::addr_t addr;
+//    static IPv4UDPSocket::addr_t addr;
 //    addr.ip[0] = 10;
 //    addr.ip[1] = 10;
 //    addr.ip[2] = 10;
@@ -288,7 +289,7 @@ RetType adxlTask(void *) {
     // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
 
     // CALL(uartDev->write((uint8_t *) buffer, size));
-    swprintf("ADXL375\n\tX-Axis: %3.2f m/s^2\n\tY-Axis: %3.2f m/s^2\n\tZ-Axis: %3.2f m/s^2\n", adxl_data.x_accel, adxl_data.y_accel, adxl_data.z_accel);
+//    swprintf("ADXL375\n\tX-Axis: %3.2f m/s^2\n\tY-Axis: %3.2f m/s^2\n\tZ-Axis: %3.2f m/s^2\n", adxl_data.x_accel, adxl_data.y_accel, adxl_data.z_accel);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&adxl_data), sizeof(adxl_data), &addr));
 
     RESET();
@@ -298,7 +299,7 @@ RetType adxlTask(void *) {
 RetType lsmTask(void *) {
     RESUME();
     static LSM6DSL_DATA_STRUCT(lsm_data);
-    static IPv4UDPSocket::addr_t addr;
+//    static IPv4UDPSocket::addr_t addr;
 //    addr.ip[0] = 10;
 //    addr.ip[1] = 10;
 //    addr.ip[2] = 10;
@@ -325,10 +326,10 @@ RetType lsmTask(void *) {
 //                           accX, accY, accZ, gyroX, gyroY, gyroZ);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-    swprintf("LSM6DSL\n\tAccel:\n\t\tX: %3.2f m/s^2\n\t\tY: %3.2f m/s^2\n\t\tZ: %3.2f m/s^2\n",
-            lsm_data.x_accel, lsm_data.y_accel, lsm_data.z_accel);
-    swprintf("\tGyro:\n\t\tX: %3.2f dps\n\t\tY: %3.2f dps\n\t\tZ: %3.2f dps\n",
-            lsm_data.x_gyro, lsm_data.y_gyro, lsm_data.z_gyro);
+//    swprintf("LSM6DSL\n\tAccel:\n\t\tX: %3.2f m/s^2\n\t\tY: %3.2f m/s^2\n\t\tZ: %3.2f m/s^2\n",
+//            lsm_data.x_accel, lsm_data.y_accel, lsm_data.z_accel);
+//    swprintf("\tGyro:\n\t\tX: %3.2f dps\n\t\tY: %3.2f dps\n\t\tZ: %3.2f dps\n",
+//            lsm_data.x_gyro, lsm_data.y_gyro, lsm_data.z_gyro);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lsm_data), sizeof(lsm_data), &addr));
 
     RESET();
@@ -338,7 +339,7 @@ RetType lsmTask(void *) {
 RetType lisTask(void *) {
     RESUME();
     static LIS3MDL_DATA_STRUCT(lis_data);
-    static IPv4UDPSocket::addr_t addr;
+//    static IPv4UDPSocket::addr_t addr;
 //    addr.ip[0] = 10;
 //    addr.ip[1] = 10;
 //    addr.ip[2] = 10;
@@ -353,8 +354,8 @@ RetType lisTask(void *) {
         return RET_SUCCESS;
     }
 
-    swprintf("LIS3MDL\n\tX: %3.2f gauss\n\tY: %3.2f gauss\n\tZ: %3.2f gauss\n\tTemp: %3.2f C\n", lis_data.x_mag,
-             lis_data.y_mag, lis_data.z_mag, lis_data.temperature);
+//    swprintf("LIS3MDL\n\tX: %3.2f gauss\n\tY: %3.2f gauss\n\tZ: %3.2f gauss\n\tTemp: %3.2f C\n", lis_data.x_mag,
+//             lis_data.y_mag, lis_data.z_mag, lis_data.temperature);
 
 //    static char buffer[100];
 //    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ,
@@ -372,7 +373,7 @@ RetType ms5607Task(void *) {
     RESUME();
 
     static MS5607_DATA_STRUCT(ms5607_data);
-    static IPv4UDPSocket::addr_t addr;
+//    static IPv4UDPSocket::addr_t addr;
 //    addr.ip[0] = 10;
 //    addr.ip[1] = 10;
 //    addr.ip[2] = 10;
@@ -413,10 +414,10 @@ RetType shtc3Task(void *) {
 
     RetType ret = CALL(shtc3->getHumidityAndTemp(&shtc3_data.temperature, &shtc3_data.humidity));
     if (RET_ERROR == ret) {
-    	swprint("#RED#SHTC3: Data read fail\n");
+//    	swprint("#RED#SHTC3: Data read fail\n");
     	goto shtc3_end;
     }
-    swprintf("SHTC3:\n\t T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
+//    swprintf("SHTC3:\n\t T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
 
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&shtc3_data), sizeof(shtc3_data), &addr));
 //    if (RET_ERROR == ret) {
@@ -436,9 +437,9 @@ static led_flash_t wiz_flash = {.led = &wizLED, .on_time = 100, .period = 250};
 RetType sensorInitTask(void *) {
     RESUME();
 
-    tid_t flash1 = sched_start(flash_led_task, &led1_flash);
-    tid_t flash2 = sched_start(flash_led_task, &led2_flash);
-    tid_t hbeat = sched_start(print_heartbeat_task, {});
+//    tid_t flash1 = sched_start(flash_led_task, &led1_flash);
+//    tid_t flash2 = sched_start(flash_led_task, &led2_flash);
+//    tid_t hbeat = sched_start(print_heartbeat_task, {});
 
     swprint("Initializing TMP117\n");
     static TMP117 tmp(*i2cDev);
@@ -463,7 +464,7 @@ RetType sensorInitTask(void *) {
     tid_t lsmTID = -1;
     RetType lsm6dslRet = CALL(lsm6dsl->init(LSM6DSL_I2C_ADDR_SECONDARY));
     if (lsm6dslRet != RET_ERROR) {
-        lsmTID = sched_start(lsmTask, {}); // TODO: Causes no other I2C tasks to run
+//        lsmTID = sched_start(lsmTask, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == lsmTID) {
 			swprint("#RED#LSM6DSL task start failed\n");
@@ -531,7 +532,7 @@ RetType sensorInitTask(void *) {
     tid_t shtTID = -1;
     RetType sht3mdlRet = CALL(shtc3->init(0x70));
     if (sht3mdlRet != RET_ERROR) {
-        shtTID = sched_start(shtc3Task, {}); // TODO: Causes no other I2C tasks to run
+//        shtTID = sched_start(shtc3Task, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == shtTID) {
 			swprint("#RED#SHTC3 task start failed\n");
@@ -711,7 +712,7 @@ int main(void) {
     static HALI2CDevice i2c("HAL I2C3", &hi2c3);
     ret = i2c.init();
     if (RET_SUCCESS != ret) {
-    	swprint("Failed to init I2C1\n");
+    	swprint("Failed to init I2C3\n");
         return -1;
     }
 	i2cDev = &i2c;
