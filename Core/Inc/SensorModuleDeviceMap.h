@@ -9,6 +9,11 @@
 #include "device/DeviceMap.h"
 #include "sched/macros.h"
 
+#include "device/platforms/stm32/HAL_I2CDevice.h"
+#include "device/platforms/stm32/HAL_SPIDevice.h"
+#include "device/platforms/stm32/HAL_UARTDevice.h"
+#include "device/platforms/stm32/HAL_GPIODevice.h"
+
 #include "device/StreamDevice.h"
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/BMP3XX/BMP3XX.h"
@@ -20,18 +25,15 @@
 
 static const size_t MAP_SIZE = 15;
 
+
 class SensorModuleDeviceMap : public alloc::DeviceMap<MAP_SIZE> {
 public:
-    /// @brief constructor
-    SensorModuleDeviceMap(I2CDevice &i2cDevice, SPIDevice &wiznetSPI, SPIDevice &flashSPI,
-                          GPIODevice &wiznetCS, GPIODevice &flashCS, GPIODevice &ledGPIO, StreamDevice &uart)
-                          : alloc::DeviceMap<MAP_SIZE>("Sensor Module Device Map"),
-                            ms5607(i2cDevice), bmp3xx(i2cDevice), adxl375(i2cDevice),
-                            lsm6dsl(i2cDevice), lis3mdl(i2cDevice), shtc3(i2cDevice), tmp117(i2cDevice),
-                            i2cDevice(i2cDevice),
-                            wiznetSPI(wiznetSPI), wiznetCS(wiznetCS),
-                            flashSPI(flashSPI), flashCS(flashCS),
-                            ledGPIO(ledGPIO), debugUART(uart) {};
+    /// @brief get the singleton instance of the Sensor Module Device Map
+    SensorModuleDeviceMap() {
+        if (instance == nullptr) {
+            instance = new SensorModuleDeviceMap(nullptr);
+        }
+    }
 
     /// @brief initialize the Sensor Module specific map
     RetType init() {
@@ -44,7 +46,7 @@ public:
 
         ret += add("led", &ledGPIO);
 
-        ret += add("debug_uart", &debugUART);
+        ret += add("debug_uart", &prompt);
 
         ret += add("ms5607", &ms5607);
         ret += add("bmp3xx", &bmp3xx);
@@ -59,26 +61,29 @@ public:
     }
 
 private:
+    /// @brief constructor
+    SensorModuleDeviceMap(const char *name) : alloc::DeviceMap<MAP_SIZE>("Sensor Module Device Map") {};
+
     // Sensors
-    MS5607 ms5607;
-    BMP3XX bmp3xx;
-    ADXL375 adxl375;
-    LSM6DSL lsm6dsl;
-    LIS3MDL lis3mdl;
-    SHTC3 shtc3;
-    TMP117 tmp117;
+    MS5607 ms5607 = MS5607(i2cDevice);
+    BMP3XX bmp3xx = BMP3XX(i2cDevice);
+    ADXL375 adxl375 = ADXL375(i2cDevice);
+    LSM6DSL lsm6dsl = LSM6DSL(i2cDevice);
+    LIS3MDL lis3mdl = LIS3MDL(i2cDevice);
+    SHTC3 shtc3 = SHTC3(i2cDevice);
+    TMP117 tmp117 = TMP117(i2cDevice);
 
-    I2CDevice &i2cDevice;
+    HALI2CDevice &i2cDevice = HALI2CDevice("HAL I2C3", &i2c);
 
-    SPIDevice &wiznetSPI;
-    GPIODevice &wiznetCS;
+    HALSPIDevice &wiznetSPI = HALSPIDevice("HAL SPI1", &wiznetSPI);
+    HALGPIODevice &wiznetCS = HALGPIODevice("HAL GPIOA", &wiznetCS, wiznetCSPort);
 
-    SPIDevice &flashSPI;
-    GPIODevice &flashCS;
+    HALSPIDevice &flashSPI = HALSPIDevice("HAL SPI2", &flashSPI);
+    HALGPIODevice &flashCS = HALGPIODevice("HAL GPIOB", &flashCS, flashCSPort);
 
-    GPIODevice &ledGPIO;
+    HALGPIODevice &ledGPIO = HALGPIODevice("HAL GPIOC", &ledGPIO, ledGPIOPort);
 
-    StreamDevice &debugUART;
+    HALUARTDevice &prompt = HALUARTDevice("PROMPT", &uart);
 };
 
 #endif //SENSOR_MODULE_SENSORMODULEDEVICEMAP_H

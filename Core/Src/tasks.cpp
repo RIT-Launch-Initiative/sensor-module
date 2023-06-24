@@ -1,8 +1,12 @@
 #include "tasks.h"
 #include "SensorModuleDeviceMap.h"
+#include "sched/macros.h"
 
 #ifdef DEBUG
 #include "device/peripherals/LED/LED.h"
+
+extern SensorModuleDeviceMap deviceMap;
+
 
 RetType print_heartbeat_task(void*) {
 	RESUME();
@@ -15,55 +19,28 @@ RetType print_heartbeat_task(void*) {
 
 RetType flash_led_task(void* args) {
 	RESUME();
-	led_flash_t* arg = ((led_flash_t*) params);
-	LED* task_led = *(arg->led);
-
-	if (NULL != task_led) {
-		if ((arg -> on) && (arg->period - arg->on_time > 0)) {
-			task_led->setState(LED_OFF);
-			arg->on = false;
-			SLEEP(arg->period - arg->on_time);
-		} else if (arg->on_time > 0) {
-			task_led->setState(LED_ON);
-			arg->on = true;
-			SLEEP(arg->on_time);
-		}
-	}
+//	led_flash_t* arg = ((led_flash_t*) params);
+//	LED* task_led = *(arg->led);
+//
+//	if (NULL != task_led) {
+//		if ((arg -> on) && (arg->period - arg->on_time > 0)) {
+//			task_led->setState(LED_OFF);
+//			arg->on = false;
+//			SLEEP(arg->period - arg->on_time);
+//		} else if (arg->on_time > 0) {
+//			task_led->setState(LED_ON);
+//			arg->on = true;
+//			SLEEP(arg->on_time);
+//		}
+//	}
 	RESET();
 	return RET_SUCCESS;
 }
 
 #endif
 
-RetType init_led_task(void*) {
-	RESUME();
-
-	CALL(ledOne->init());
-	CALL(ledTwo->init());
-	CALL(wizLED->init());
-
-	RESET();
-	return RET_ERROR;
-}
-
-
-RetType i2cDevPollTask(void *) {
-    RESUME();
-    CALL(i2cDev->poll());
-//    swprint("I2C Poll\n");
-    RESET();
-    return RET_SUCCESS;
-}
-
-    RetType spiDevPollTask(void *) {
-    RESUME();
-    CALL(wizSPI->poll());
-//    CALL(flashSPI->poll());
-    RESET();
-    return RET_SUCCESS;
-}
-
 RetType bmp_task(void *) {
+    BMP3XX *bmp3XX = dynamic_cast<BMP3XX*>(deviceMap.get("BMP3XX"));
     RESUME();
 
     static BMP3XX_DATA_STRUCT(bmp_data);
