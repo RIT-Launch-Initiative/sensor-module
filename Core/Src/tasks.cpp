@@ -1,5 +1,8 @@
 #include "tasks.h"
+#include "SensorModuleDeviceMap.h"
 
+#ifdef DEBUG
+#include "device/peripherals/LED/LED.h"
 
 RetType print_heartbeat_task(void*) {
 	RESUME();
@@ -29,6 +32,8 @@ RetType flash_led_task(void* args) {
 	RESET();
 	return RET_SUCCESS;
 }
+
+#endif
 
 RetType init_led_task(void*) {
 	RESUME();

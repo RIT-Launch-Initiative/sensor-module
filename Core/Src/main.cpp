@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "tasks.h"
 
 #include "device/platforms/stm32/HAL_GPIODevice.h"
 #include "device/platforms/stm32/HAL_UARTDevice.h"
@@ -245,10 +246,7 @@ int main(void) {
     }
     wizSPI = &wizSpi;
 
-    sched_start(i2cDevPollTask, {});
-    sched_start(spiDevPollTask, {});
 //    sched_start(netStackInitTask, {});
-    sched_start(sensorInitTask, {});
 
     /* USER CODE END 2 */
 

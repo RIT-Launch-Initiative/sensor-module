@@ -21,7 +21,7 @@ RetType network_init(void* args);
 /***********************************/
 /********** Debug Tasks ***********/
 /*********************************/
-
+#ifdef DEBUG
 RetType print_heartbeat_task(void* args);
 
 RetType flash_led_task(void* args);
@@ -29,7 +29,7 @@ RetType flash_led_task(void* args);
 RetType wiz_send_test_task(void *);
 
 RetType wiz_recv_test_task(void *);
-
+#endif
 /***********************************/
 /********** Sensor Tasks **********/
 /*********************************/
