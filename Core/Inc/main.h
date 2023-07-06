@@ -57,18 +57,59 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define B1_Pin GPIO_PIN_13
-#define B1_GPIO_Port GPIOC
-#define USART_TX_Pin GPIO_PIN_2
-#define USART_TX_GPIO_Port GPIOA
-#define USART_RX_Pin GPIO_PIN_3
-#define USART_RX_GPIO_Port GPIOA
-#define LD2_Pin GPIO_PIN_5
-#define LD2_GPIO_Port GPIOA
-#define TMS_Pin GPIO_PIN_13
-#define TMS_GPIO_Port GPIOA
-#define TCK_Pin GPIO_PIN_14
-#define TCK_GPIO_Port GPIOA
+#define ADDR3raw_Pin GPIO_PIN_13
+#define ADDR3raw_GPIO_Port GPIOC
+#define ADDR2raw_Pin GPIO_PIN_14
+#define ADDR2raw_GPIO_Port GPIOC
+#define ADDR1raw_Pin GPIO_PIN_15
+#define ADDR1raw_GPIO_Port GPIOC
+#define ADDR0raw_Pin GPIO_PIN_0
+#define ADDR0raw_GPIO_Port GPIOH
+#define WS25_CS_Pin GPIO_PIN_0
+#define WS25_CS_GPIO_Port GPIOC
+#define W5500_RST_Pin GPIO_PIN_3
+#define W5500_RST_GPIO_Port GPIOA
+#define W5500_INT_Pin GPIO_PIN_4
+#define W5500_INT_GPIO_Port GPIOA
+#define W5500_INT_EXTI_IRQn EXTI4_IRQn
+#define ETH_CS_Pin GPIO_PIN_4
+#define ETH_CS_GPIO_Port GPIOC
+#define Wiz_LED_Pin GPIO_PIN_5
+#define Wiz_LED_GPIO_Port GPIOC
+#define PA1_LED_Pin GPIO_PIN_0
+#define PA1_LED_GPIO_Port GPIOB
+#define PA2_LED_Pin GPIO_PIN_1
+#define PA2_LED_GPIO_Port GPIOB
+#define LSM6_INT1_Pin GPIO_PIN_10
+#define LSM6_INT1_GPIO_Port GPIOB
+#define LSM6_INT2_DEN_Pin GPIO_PIN_12
+#define LSM6_INT2_DEN_GPIO_Port GPIOB
+#define LSM6_INT2_DEN_EXTI_IRQn EXTI15_10_IRQn
+#define ADXL_INT2_Pin GPIO_PIN_14
+#define ADXL_INT2_GPIO_Port GPIOB
+#define ADXL_INT2_EXTI_IRQn EXTI15_10_IRQn
+#define ADXL_INT1_Pin GPIO_PIN_15
+#define ADXL_INT1_GPIO_Port GPIOB
+#define ADXL_INT1_EXTI_IRQn EXTI15_10_IRQn
+#define MCU_INT_Pin GPIO_PIN_6
+#define MCU_INT_GPIO_Port GPIOC
+#define MCU_INT_EXTI_IRQn EXTI9_5_IRQn
+#define BMP_INT_Pin GPIO_PIN_7
+#define BMP_INT_GPIO_Port GPIOC
+#define BMP_INT_EXTI_IRQn EXTI9_5_IRQn
+#define LIS_INT_Pin GPIO_PIN_9
+#define LIS_INT_GPIO_Port GPIOA
+#define LIS_INT_EXTI_IRQn EXTI9_5_IRQn
+#define LIS_DRDY_Pin GPIO_PIN_10
+#define LIS_DRDY_GPIO_Port GPIOA
+#define LIS_DRDY_EXTI_IRQn EXTI15_10_IRQn
+#define P_IO_2_Pin GPIO_PIN_15
+#define P_IO_2_GPIO_Port GPIOA
+#define P_IO_1_Pin GPIO_PIN_10
+#define P_IO_1_GPIO_Port GPIOC
+#define RS485_MODE_Pin GPIO_PIN_11
+#define RS485_MODE_GPIO_Port GPIOC
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

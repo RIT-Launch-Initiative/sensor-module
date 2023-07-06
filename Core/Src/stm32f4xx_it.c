@@ -55,10 +55,10 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern I2C_HandleTypeDef hi2c1;
+extern I2C_HandleTypeDef hi2c3;
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
-extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart5;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -75,9 +75,8 @@ void NMI_Handler(void)
 
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
-  while (1)
-  {
-  }
+    while (1) {
+    }
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
 
@@ -87,11 +86,18 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+	HAL_GPIO_WritePin(Wiz_LED_GPIO_Port, Wiz_LED_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(PA1_LED_GPIO_Port, PA1_LED_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(PA2_LED_GPIO_Port, PA2_LED_Pin, GPIO_PIN_SET);
+	static const char hf[] = "HardFault\n";
+	for (int i = 0; i < 10; i++) {
+		ITM_SendChar(hf[i]);
+	}
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }
@@ -202,31 +208,33 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles I2C1 event interrupt.
+  * @brief This function handles EXTI line 4 interrupt.
   */
-void I2C1_EV_IRQHandler(void)
+void EXTI4_IRQHandler(void)
 {
-  /* USER CODE BEGIN I2C1_EV_IRQn 0 */
+  /* USER CODE BEGIN EXTI4_IRQn 0 */
 
-  /* USER CODE END I2C1_EV_IRQn 0 */
-  HAL_I2C_EV_IRQHandler(&hi2c1);
-  /* USER CODE BEGIN I2C1_EV_IRQn 1 */
+  /* USER CODE END EXTI4_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(W5500_INT_Pin);
+  /* USER CODE BEGIN EXTI4_IRQn 1 */
 
-  /* USER CODE END I2C1_EV_IRQn 1 */
+  /* USER CODE END EXTI4_IRQn 1 */
 }
 
 /**
-  * @brief This function handles I2C1 error interrupt.
+  * @brief This function handles EXTI line[9:5] interrupts.
   */
-void I2C1_ER_IRQHandler(void)
+void EXTI9_5_IRQHandler(void)
 {
-  /* USER CODE BEGIN I2C1_ER_IRQn 0 */
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
-  /* USER CODE END I2C1_ER_IRQn 0 */
-  HAL_I2C_ER_IRQHandler(&hi2c1);
-  /* USER CODE BEGIN I2C1_ER_IRQn 1 */
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(MCU_INT_Pin);
+  HAL_GPIO_EXTI_IRQHandler(BMP_INT_Pin);
+  HAL_GPIO_EXTI_IRQHandler(LIS_INT_Pin);
+  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
-  /* USER CODE END I2C1_ER_IRQn 1 */
+  /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
 /**
@@ -258,17 +266,62 @@ void SPI2_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles USART2 global interrupt.
+  * @brief This function handles EXTI line[15:10] interrupts.
   */
-void USART2_IRQHandler(void)
+void EXTI15_10_IRQHandler(void)
 {
-  /* USER CODE BEGIN USART2_IRQn 0 */
+  /* USER CODE BEGIN EXTI15_10_IRQn 0 */
 
-  /* USER CODE END USART2_IRQn 0 */
-  HAL_UART_IRQHandler(&huart2);
-  /* USER CODE BEGIN USART2_IRQn 1 */
+  /* USER CODE END EXTI15_10_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(LIS_DRDY_Pin);
+  HAL_GPIO_EXTI_IRQHandler(LSM6_INT2_DEN_Pin);
+  HAL_GPIO_EXTI_IRQHandler(ADXL_INT2_Pin);
+  HAL_GPIO_EXTI_IRQHandler(ADXL_INT1_Pin);
+  /* USER CODE BEGIN EXTI15_10_IRQn 1 */
 
-  /* USER CODE END USART2_IRQn 1 */
+  /* USER CODE END EXTI15_10_IRQn 1 */
+}
+
+/**
+  * @brief This function handles UART5 global interrupt.
+  */
+void UART5_IRQHandler(void)
+{
+  /* USER CODE BEGIN UART5_IRQn 0 */
+
+  /* USER CODE END UART5_IRQn 0 */
+  HAL_UART_IRQHandler(&huart5);
+  /* USER CODE BEGIN UART5_IRQn 1 */
+
+  /* USER CODE END UART5_IRQn 1 */
+}
+
+/**
+  * @brief This function handles I2C3 event interrupt.
+  */
+void I2C3_EV_IRQHandler(void)
+{
+  /* USER CODE BEGIN I2C3_EV_IRQn 0 */
+
+  /* USER CODE END I2C3_EV_IRQn 0 */
+  HAL_I2C_EV_IRQHandler(&hi2c3);
+  /* USER CODE BEGIN I2C3_EV_IRQn 1 */
+
+  /* USER CODE END I2C3_EV_IRQn 1 */
+}
+
+/**
+  * @brief This function handles I2C3 error interrupt.
+  */
+void I2C3_ER_IRQHandler(void)
+{
+  /* USER CODE BEGIN I2C3_ER_IRQn 0 */
+
+  /* USER CODE END I2C3_ER_IRQn 0 */
+  HAL_I2C_ER_IRQHandler(&hi2c3);
+  /* USER CODE BEGIN I2C3_ER_IRQn 1 */
+
+  /* USER CODE END I2C3_ER_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
