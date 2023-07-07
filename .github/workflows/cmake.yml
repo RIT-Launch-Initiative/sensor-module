@@ -1,4 +1,4 @@
-name: CMake
+name: Sensor Module Checks
 
 on:
   push:
@@ -22,6 +22,8 @@ jobs:
     
     - name: GNU Arm Embedded Toolchain
       uses: ryanwinter/arm-none-eabi-gcc@v2.0.4
+      with:
+          release: '10.3-2021.10' # The arm-none-eabi-gcc release to use.
 
 
     - name: Configure CMake
