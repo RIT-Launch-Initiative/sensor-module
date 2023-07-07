@@ -1,4 +1,4 @@
-name: Sensor Module Checks
+name: Compile and Test Checks
 
 on:
   push:
