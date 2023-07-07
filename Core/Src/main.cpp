@@ -170,11 +170,11 @@ RetType flash_led_task(void* params) {
 
 	if (NULL != task_led) {
 		if ((arg -> on) && (arg->period - arg->on_time > 0)) {
-			task_led->setState(LED_OFF);
+			task_led->set_state(LED_OFF);
 			arg->on = false;
 			SLEEP(arg->period - arg->on_time);
 		} else if (arg->on_time > 0) {
-			task_led->setState(LED_ON);
+			task_led->set_state(LED_ON);
 			arg->on = true;
 			SLEEP(arg->on_time);
 		}
@@ -689,19 +689,19 @@ int main(void) {
     HALGPIODevice ledOneGPIO("LED 1 GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
     ret = ledOneGPIO.init();
     LED ledOneLocal(ledOneGPIO);
-    ledOneLocal.setState(LED_OFF);
+    ledOneLocal.set_state(LED_OFF);
     ledOne = &ledOneLocal;
 
     HALGPIODevice ledTwoGPIO("LED 2 GPIO", PA2_LED_GPIO_Port, PA2_LED_Pin);
     ret = ledTwoGPIO.init();
     LED ledTwoLocal(ledTwoGPIO);
-    ledOneLocal.setState(LED_OFF);
+    ledOneLocal.set_state(LED_OFF);
     ledTwo = &ledTwoLocal;
 
     HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
     ret = wiznetLEDGPIO.init();
     LED wiznetLED(wiznetLEDGPIO);
-    wiznetLED.setState(LED_ON);
+    wiznetLED.set_state(LED_ON);
     wizLED = &wiznetLED;
 
     HALGPIODevice wizChipSelect("Wiznet CS", ETH_CS_GPIO_Port, ETH_CS_Pin);
