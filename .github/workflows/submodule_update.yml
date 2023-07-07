@@ -1,0 +1,19 @@
+name: Update Launch-Core Submodule
+on:
+  repository_dispatch:
+    types: update
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.LAUNCH_ACCESS_TOKEN }}
+          submodules: recursive
+      - name: Update module
+        run: |
+          git submodule update --init --recursive --checkout -f --remote -- "${{github.event.client_payload.module}}"
+          git config --global user.name "RIT Launch Initiative
+          git config --global user.email "launch@rit.edu"
+          git commit -am "deploy: ${{github.event.client_payload.module}} - ${{github.event.client_payload.sha}}"
+          git push
