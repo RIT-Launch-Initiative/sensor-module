@@ -24,6 +24,9 @@ jobs:
       uses: ryanwinter/arm-none-eabi-gcc@v2.0.4
       with:
           release: '10.3-2021.10' # The arm-none-eabi-gcc release to use.
+    
+    - name: Checkout Launch-Core Submodule
+      run: git submodule update --init --remote --recursive 
 
 
     - name: Configure CMake
