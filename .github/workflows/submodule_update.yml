@@ -15,7 +15,7 @@ jobs:
           git submodule update --init --recursive --checkout -f --remote -- "${{github.event.client_payload.module}}"
           git config --global user.name "RIT Launch Initiative"
           git config --global user.email "launchinitiative@rit.edu"
-          git commit -am "deploy: ${{github.event.client_payload.module}} - ${{github.event.client_payload.sha}}"
+          git commit -am "update: ${{github.event.client_payload.module}}"
           git push
 
       - name: GNU Arm Embedded Toolchain
