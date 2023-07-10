@@ -22,17 +22,44 @@
 #include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
+#include "device/peripherals/wiznet/wiznet.h"
+#include "device/peripherals/W25Q/W25Q.h"
 
 static const size_t MAP_SIZE = 15;
 
 
 class SensorModuleDeviceMap : public alloc::DeviceMap<MAP_SIZE> {
 public:
-    /// @brief get the singleton instance of the Sensor Module Device Map
-    SensorModuleDeviceMap() {
-        if (instance == nullptr) {
-            instance = new SensorModuleDeviceMap(nullptr);
-        }
+    SensorModuleDeviceMap(I2C_HandleTypeDef &i2c, UART_HandleTypeDef &promptUART, SPI_HandleTypeDef &hspi1,
+                          SPI_HandleTypeDef &hspi2, GPIO_TypeDef *csPortOne, uint16_t csPinOne, GPIO_TypeDef *csPortTwo,
+                          uint16_t csPinTwo, GPIO_TypeDef *ledPortOne, uint16_t &ledPinOne, GPIO_TypeDef *ledPortTwo,
+                          uint16_t ledPinTwo, GPIO_TypeDef *wizLEDPort, uint16_t wizLEDPin, GPIO_TypeDef *wizResetPort, uint16_t wizResetPin) : DeviceMap("Sensor Module") {
+        i2cDevice = HALI2CDevice("HAL I2C3", &i2c);
+
+
+        wiznetSPI = HALSPIDevice("WIZNET SPI", &hspi1);
+        wiznetCS = HALGPIODevice("WIZNET CS", csPortOne, csPinOne);
+        wiznetReset = HALGPIODevice("WIZNET RESET", wizResetPort, wizResetPin);
+        wiznetLEDGPIO = HALGPIODevice("WIZNET LED", wizLEDPort, wizLEDPin);
+
+        flashSPI = HALSPIDevice("FLASH SPI", &hspi2);
+        flashCS = HALGPIODevice("FLASH CS", csPortTwo, csPinTwo);
+
+        ledOneGPIO = HALGPIODevice("LED ONE", ledPortOne, ledPinOne);
+        ledTwoGPIO = HALGPIODevice("LED ONE", ledPortTwo, ledPinTwo);
+
+        prompt = HALUARTDevice("PROMPT", &promptUART);
+
+        adxl375 = ADXL375(i2cDevice);
+        bmp3xx = BMP3XX(i2cDevice);
+        lis3mdl = LIS3MDL(i2cDevice);
+        lsm6dsl = LSM6DSL(i2cDevice);
+        ms5607 = MS5607(i2cDevice);
+        shtc3 = SHTC3(i2cDevice);
+        tmp117 = TMP117(i2cDevice);
+
+        wiznet = Wiznet(wiznetSPI, wiznetCS, wiznetReset);
+//        w25q = W25Q("W25Q", flashSPI, flashCS, 0)
     }
 
     /// @brief initialize the Sensor Module specific map
@@ -41,49 +68,58 @@ public:
         int ret = add("i2c", &i2cDevice);
         ret += add("wiznet_spi", &wiznetSPI);
         ret += add("wiznet_cs", &wiznetCS);
-        ret += add("flash_spi", &flashSPI);
-        ret += add("flash_cs", &flashCS);
+        ret += add("wiznet_reset", &wiznetReset);
+        ret += add("wiznet", &wiznet);
 
-        ret += add("led", &ledGPIO);
+//        ret += add("flash_spi", &flashSPI);
+//        ret += add("flash_cs", &flashCS);
 
-        ret += add("debug_uart", &prompt);
-
-        ret += add("ms5607", &ms5607);
-        ret += add("bmp3xx", &bmp3xx);
         ret += add("adxl375", &adxl375);
-        ret += add("lsm6dsl", &lsm6dsl);
+        ret += add("bmp3xx", &bmp3xx);
         ret += add("lis3mdl", &lis3mdl);
+        ret += add("lsm6dsl", &lsm6dsl);
+        ret += add("ms5607", &ms5607);
         ret += add("shtc3", &shtc3);
         ret += add("tmp117", &tmp117);
+
+        ret += add("prompt", &prompt);
 
         // SUCCESS if ret == 0
         return static_cast<RetType>(ret);
     }
 
 private:
-    /// @brief constructor
-    SensorModuleDeviceMap(const char *name) : alloc::DeviceMap<MAP_SIZE>("Sensor Module Device Map") {};
-
     // Sensors
-    MS5607 ms5607 = MS5607(i2cDevice);
-    BMP3XX bmp3xx = BMP3XX(i2cDevice);
-    ADXL375 adxl375 = ADXL375(i2cDevice);
-    LSM6DSL lsm6dsl = LSM6DSL(i2cDevice);
-    LIS3MDL lis3mdl = LIS3MDL(i2cDevice);
-    SHTC3 shtc3 = SHTC3(i2cDevice);
-    TMP117 tmp117 = TMP117(i2cDevice);
+    MS5607 ms5607;
+    BMP3XX bmp3xx;
+    ADXL375 adxl375;
+    LSM6DSL lsm6dsl;
+    LIS3MDL lis3mdl;
+    SHTC3 shtc3;
+    TMP117 tmp117;
 
-    HALI2CDevice &i2cDevice = HALI2CDevice("HAL I2C3", &i2c);
+    // SPI Devices
+    Wiznet wiznet;
+//    W25Q w25q;
 
-    HALSPIDevice &wiznetSPI = HALSPIDevice("HAL SPI1", &wiznetSPI);
-    HALGPIODevice &wiznetCS = HALGPIODevice("HAL GPIOA", &wiznetCS, wiznetCSPort);
+    HALI2CDevice i2cDevice;
 
-    HALSPIDevice &flashSPI = HALSPIDevice("HAL SPI2", &flashSPI);
-    HALGPIODevice &flashCS = HALGPIODevice("HAL GPIOB", &flashCS, flashCSPort);
+    HALSPIDevice wiznetSPI;
+    HALGPIODevice wiznetCS;
+    HALGPIODevice wiznetLEDGPIO;
+    HALGPIODevice wiznetReset;
+//    LED wiznetLED;
 
-    HALGPIODevice &ledGPIO = HALGPIODevice("HAL GPIOC", &ledGPIO, ledGPIOPort);
+    HALSPIDevice flashSPI;
+    HALGPIODevice flashCS;
 
-    HALUARTDevice &prompt = HALUARTDevice("PROMPT", &uart);
+    HALGPIODevice ledOneGPIO;
+//    LED ledOne;
+
+    HALGPIODevice ledTwoGPIO;
+//    LED ledTwo;
+
+    HALUARTDevice prompt;
 };
 
 #endif //SENSOR_MODULE_SENSORMODULEDEVICEMAP_H
