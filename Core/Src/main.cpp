@@ -91,23 +91,6 @@ static void MX_I2C3_Init(void);
 static void MX_UART5_Init(void);
 
 /* USER CODE BEGIN PFP */
-static MS5607 *ms5607 = nullptr;
-static BMP3XX *bmp3XX = nullptr;
-static ADXL375 *adxl375 = nullptr;
-static LIS3MDL *lis3mdl = nullptr;
-static LSM6DSL *lsm6dsl = nullptr;
-static TMP117 *tmp117 = nullptr;
-static SHTC3 *shtc3 = nullptr;
-static LED *ledOne = nullptr;
-static LED *ledTwo = nullptr;
-static LED *wizLED = nullptr;
-static HALUARTDevice *uartDev = nullptr;
-static HALI2CDevice *i2cDev = nullptr;
-static HALSPIDevice *wizSPI = nullptr;
-static HALGPIODevice *wizCS = nullptr;
-static HALSPIDevice *flashSPI = nullptr;
-
-//static W5500 *w5500 = nullptr;
 //static IPv4UDPStack *stack = nullptr;
 //static IPv4UDPSocket *sock = nullptr;
 
@@ -150,62 +133,15 @@ int main(void) {
     MX_I2C3_Init();
     MX_UART5_Init();
     /* USER CODE BEGIN 2 */
-    HALUARTDevice uart("UART", &huart5);
-    RetType ret = uart.init();
-
-    if (ret != RET_SUCCESS) {
-    	swprint("Failed to init UART\n");
-        return -1;
-    }
-    uartDev = &uart;
-    swprint("UART Initalized\n");
 
     if (!sched_init(&HAL_GetTick)) {
     	swprint("Failed to init scheduler\n");
         return -1;
     }
 
-    // Initialize peripherals
-    HALGPIODevice ledOneGPIO("LED 1 GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
-    ret = ledOneGPIO.init();
-    LED ledOneLocal(ledOneGPIO);
-    ledOneLocal.set_state(LED_OFF);
-    ledOne = &ledOneLocal;
-
-    HALGPIODevice ledTwoGPIO("LED 2 GPIO", PA2_LED_GPIO_Port, PA2_LED_Pin);
-    ret = ledTwoGPIO.init();
-    LED ledTwoLocal(ledTwoGPIO);
-    ledOneLocal.set_state(LED_OFF);
-    ledTwo = &ledTwoLocal;
-
-    HALGPIODevice wiznetLEDGPIO("Wiznet LED GPIO", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
-    ret = wiznetLEDGPIO.init();
-    LED wiznetLED(wiznetLEDGPIO);
-    wiznetLED.set_state(LED_ON);
-    wizLED = &wiznetLED;
-
-    HALGPIODevice wizChipSelect("Wiznet CS", ETH_CS_GPIO_Port, ETH_CS_Pin);
-    ret = wizChipSelect.init();
-    wizCS = &wizChipSelect;
-    wizChipSelect.set(1);
-
-    static HALI2CDevice i2c("HAL I2C3", &hi2c3);
-    ret = i2c.init();
-    if (RET_SUCCESS != ret) {
-    	swprint("Failed to init I2C3\n");
-        return -1;
+    if (RET_SUCCESS != deviceMap.init()) {
+        swprint("Failed to init devices\n");
     }
-	i2cDev = &i2c;
-
-    static HALSPIDevice wizSpi("WIZNET SPI", &hspi1);
-    ret = wizSpi.init();
-    if (RET_SUCCESS != ret) {
-    	swprint("Failed to init SPI\n");
-    	return -1;
-    }
-    wizSPI = &wizSpi;
-
-//    sched_start(netStackInitTask, {});
 
     /* USER CODE END 2 */
 

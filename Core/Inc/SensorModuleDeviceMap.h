@@ -32,9 +32,6 @@ extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
 extern UART_HandleTypeDef huart5;
 
-
-
-
 class SensorModuleDeviceMap : public alloc::DeviceMap<MAP_SIZE> {
 public:
     SensorModuleDeviceMap() : DeviceMap("Sensor Module") {}
