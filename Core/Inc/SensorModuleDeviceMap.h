@@ -27,40 +27,17 @@
 
 static const size_t MAP_SIZE = 15;
 
+extern I2C_HandleTypeDef hi2c3;
+extern SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef hspi2;
+extern UART_HandleTypeDef huart5;
+
+
+
 
 class SensorModuleDeviceMap : public alloc::DeviceMap<MAP_SIZE> {
 public:
-    SensorModuleDeviceMap(I2C_HandleTypeDef &i2c, UART_HandleTypeDef &promptUART, SPI_HandleTypeDef &hspi1,
-                          SPI_HandleTypeDef &hspi2, GPIO_TypeDef *csPortOne, uint16_t csPinOne, GPIO_TypeDef *csPortTwo,
-                          uint16_t csPinTwo, GPIO_TypeDef *ledPortOne, uint16_t &ledPinOne, GPIO_TypeDef *ledPortTwo,
-                          uint16_t ledPinTwo, GPIO_TypeDef *wizLEDPort, uint16_t wizLEDPin, GPIO_TypeDef *wizResetPort, uint16_t wizResetPin) : DeviceMap("Sensor Module") {
-        i2cDevice = HALI2CDevice("HAL I2C3", &i2c);
-
-
-        wiznetSPI = HALSPIDevice("WIZNET SPI", &hspi1);
-        wiznetCS = HALGPIODevice("WIZNET CS", csPortOne, csPinOne);
-        wiznetReset = HALGPIODevice("WIZNET RESET", wizResetPort, wizResetPin);
-        wiznetLEDGPIO = HALGPIODevice("WIZNET LED", wizLEDPort, wizLEDPin);
-
-        flashSPI = HALSPIDevice("FLASH SPI", &hspi2);
-        flashCS = HALGPIODevice("FLASH CS", csPortTwo, csPinTwo);
-
-        ledOneGPIO = HALGPIODevice("LED ONE", ledPortOne, ledPinOne);
-        ledTwoGPIO = HALGPIODevice("LED ONE", ledPortTwo, ledPinTwo);
-
-        prompt = HALUARTDevice("PROMPT", &promptUART);
-
-        adxl375 = ADXL375(i2cDevice);
-        bmp3xx = BMP3XX(i2cDevice);
-        lis3mdl = LIS3MDL(i2cDevice);
-        lsm6dsl = LSM6DSL(i2cDevice);
-        ms5607 = MS5607(i2cDevice);
-        shtc3 = SHTC3(i2cDevice);
-        tmp117 = TMP117(i2cDevice);
-
-        wiznet = Wiznet(wiznetSPI, wiznetCS, wiznetReset);
-//        w25q = W25Q("W25Q", flashSPI, flashCS, 0)
-    }
+    SensorModuleDeviceMap() : DeviceMap("Sensor Module") {}
 
     /// @brief initialize the Sensor Module specific map
     RetType init() {
@@ -89,37 +66,37 @@ public:
     }
 
 private:
-    // Sensors
-    MS5607 ms5607;
-    BMP3XX bmp3xx;
-    ADXL375 adxl375;
-    LSM6DSL lsm6dsl;
-    LIS3MDL lis3mdl;
-    SHTC3 shtc3;
-    TMP117 tmp117;
+    HALI2CDevice i2cDevice = HALI2CDevice("hi2c3", &hi2c3);
 
-    // SPI Devices
-    Wiznet wiznet;
-//    W25Q w25q;
-
-    HALI2CDevice i2cDevice;
-
-    HALSPIDevice wiznetSPI;
-    HALGPIODevice wiznetCS;
-    HALGPIODevice wiznetLEDGPIO;
-    HALGPIODevice wiznetReset;
+    HALSPIDevice wiznetSPI = HALSPIDevice("WIZNET SPI", &hspi1);
+    HALGPIODevice wiznetCS = HALGPIODevice("WIZNET CS", ETH_CS_GPIO_Port, ETH_CS_Pin);
+    HALGPIODevice wiznetLEDGPIO = HALGPIODevice("WIZNET LED", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
+    HALGPIODevice wiznetReset = HALGPIODevice("WIZNET RESET", W5500_RST_GPIO_Port, W5500_RST_Pin);
 //    LED wiznetLED;
 
-    HALSPIDevice flashSPI;
-    HALGPIODevice flashCS;
+//    HALSPIDevice flashSPI;
+//    HALGPIODevice flashCS;
 
-    HALGPIODevice ledOneGPIO;
-//    LED ledOne;
+    HALGPIODevice ledOneGPIO = HALGPIODevice("LED ONE", PA1_LED_GPIO_Port, PA1_LED_Pin);
+    LED ledOne = LED(ledOneGPIO);
 
-    HALGPIODevice ledTwoGPIO;
-//    LED ledTwo;
+    HALGPIODevice ledTwoGPIO = HALGPIODevice("LED TWO", PA2_LED_GPIO_Port, PA2_LED_Pin);
+    LED ledTwo = LED(ledTwoGPIO);
 
-    HALUARTDevice prompt;
+    HALUARTDevice prompt = HALUARTDevice("PROMPT", &huart5);
+
+    // Sensors
+    ADXL375 adxl375 = ADXL375(i2cDevice);
+    BMP3XX bmp3xx = BMP3XX(i2cDevice);
+    LIS3MDL lis3mdl = LIS3MDL(i2cDevice);
+    LSM6DSL lsm6dsl = LSM6DSL(i2cDevice);
+    MS5607 ms5607 = MS5607(i2cDevice);
+    SHTC3 shtc3 = SHTC3(i2cDevice);
+    TMP117 tmp117 = TMP117(i2cDevice);
+
+    // SPI Devices
+    Wiznet wiznet = Wiznet(wiznetSPI, wiznetCS, wiznetReset);
+//    W25Q w25q;
 };
 
 #endif //SENSOR_MODULE_SENSORMODULEDEVICEMAP_H

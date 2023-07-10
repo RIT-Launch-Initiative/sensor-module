@@ -74,7 +74,7 @@ SPI_HandleTypeDef hspi2;
 UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
-SensorModuleDeviceMap deviceMap = SensorModuleDeviceMap(nullptr);
+SensorModuleDeviceMap deviceMap = SensorModuleDeviceMap();
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -115,40 +115,6 @@ static HALSPIDevice *flashSPI = nullptr;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-// Don't do the variable arguments stuff to save time
-// I don't actually know how much time this saves
-void swprint(const char* msg) {
-#ifdef DEBUG
-	int len = strlen(msg);
-	for (int i = 0; i < len; i++) {
-		ITM_SendChar(msg[i]);
-	}
-#endif
-}
-
-// send stuff down serial wire out if DEBUG flag set
-// Do not send a message larger than 256 bytes
-int swprintf(const char* fmt, ...) {
-#ifdef DEBUG
-	va_list ap;
-	va_start(ap, fmt);
-	char msg[256];
-	int status = vsnprintf(msg, 256, fmt, ap);
-	va_end(ap);
-
-	if (status > 0) {
-		for (int i = 0; i < status; i++) {
-			ITM_SendChar(msg[i]);
-		}
-	}
-
-	return status;
-#else
-	return 0;
-#endif
-}
-
-
 
 /* USER CODE END 0 */
 
