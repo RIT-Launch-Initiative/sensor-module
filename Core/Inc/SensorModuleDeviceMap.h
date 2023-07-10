@@ -25,7 +25,7 @@
 #include "device/peripherals/wiznet/wiznet.h"
 #include "device/peripherals/W25Q/W25Q.h"
 
-static const size_t MAP_SIZE = 15;
+static const size_t MAP_SIZE = 22;
 
 extern I2C_HandleTypeDef hi2c3;
 extern SPI_HandleTypeDef hspi1;
@@ -43,6 +43,11 @@ public:
     RetType init() {
         // RET_SUCCESS is a 0
         int ret = add("i2c", &i2cDevice);
+        ret += add("prompt", &prompt);
+
+//        ret += add("led_one", &ledOne);
+//        ret += add("led_two", &ledTwo);
+
         ret += add("wiznet_spi", &wiznetSPI);
         ret += add("wiznet_cs", &wiznetCS);
         ret += add("wiznet_reset", &wiznetReset);
@@ -59,7 +64,6 @@ public:
         ret += add("shtc3", &shtc3);
         ret += add("tmp117", &tmp117);
 
-        ret += add("prompt", &prompt);
 
         // SUCCESS if ret == 0
         return static_cast<RetType>(ret);
