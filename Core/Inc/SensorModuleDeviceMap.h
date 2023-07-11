@@ -37,7 +37,7 @@ public:
     SensorModuleDeviceMap() : DeviceMap("Sensor Module") {}
 
     /// @brief initialize the Sensor Module specific map
-    RetType init() {
+    constexpr RetType init() {
         // RET_SUCCESS is a 0
         int ret = add("i2c", &i2cDevice);
         ret += add("prompt", &prompt);
@@ -50,8 +50,6 @@ public:
         ret += add("wiznet_reset", &wiznetReset);
         ret += add("wiznet", &wiznet);
 
-//        ret += add("flash_spi", &flashSPI);
-//        ret += add("flash_cs", &flashCS);
 
         ret += add("adxl375", &adxl375);
         ret += add("bmp3xx", &bmp3xx);

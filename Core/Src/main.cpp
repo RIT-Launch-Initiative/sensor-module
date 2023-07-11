@@ -25,21 +25,13 @@
 #include <string.h>
 #include <stdarg.h>
 #include "tasks.h"
+#include "init/init.h"
 
-#include "device/platforms/stm32/HAL_GPIODevice.h"
-#include "device/platforms/stm32/HAL_UARTDevice.h"
-#include "device/platforms/stm32/HAL_SPIDevice.h"
 #include "device/peripherals/LED/LED.h"
-#include "device/platforms/stm32/HAL_I2CDevice.h"
-//#include "device/peripherals/W25Q/W25Q.h"
-#include "device/peripherals/ADXL375/ADXL375.h"
-#include "device/peripherals/BMP3XX/BMP3XX.h"
-#include "device/peripherals/LIS3MDL/LIS3MDL.h"
-#include "device/peripherals/LSM6DSL/LSM6DSL.h"
-#include "device/peripherals/MS5607/MS5607.h"
+
 #include "device/peripherals/SHTC3/SHTC3.h"
-#include "device/peripherals/TMP117/TMP117.h"
 #include "SensorModuleDeviceMap.h"
+#include "tasks.h"
 
 //#include "sched/macros/call.h"
 /* USER CODE END Includes */
@@ -134,6 +126,17 @@ int main(void) {
     MX_UART5_Init();
     /* USER CODE BEGIN 2 */
 
+    task_func_t tasks[8] = {ms5607_task, bmp388_task, lsm6dsl_task, adxl375_task, lis3mdl_task, tmp117_task, shtc3_task,
+                             wiz_send_test_task};
+    void *args[8] = {{}, {}, {}, {}, {}, {}, {}, {}};
+
+    init_arg_t init_args = {
+            .dev_map = &deviceMap,
+            .tasks = tasks,
+            .args = args,
+            .num_tasks = 8,
+    };
+
     if (!sched_init(&HAL_GetTick)) {
     	swprint("Failed to init scheduler\n");
         return -1;
@@ -142,6 +145,8 @@ int main(void) {
     if (RET_SUCCESS != deviceMap.init()) {
         swprint("Failed to init devices\n");
     }
+
+    sched_start(init, static_cast<void*>(&init_args));
 
     /* USER CODE END 2 */
 

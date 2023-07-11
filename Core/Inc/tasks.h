@@ -39,7 +39,7 @@ RetType wiz_recv_test_task(void *);
  * @param args
  * @return Scheduler Status
  */
-RetType ms5607_task(void* args);
+RetType ms5607_task(void *args);
 
 /**
  * Task for the BMP388 Barometric Pressure Sensor
