@@ -24,6 +24,7 @@
 #include "device/peripherals/TMP117/TMP117.h"
 #include "device/peripherals/wiznet/wiznet.h"
 #include "device/peripherals/W25Q/W25Q.h"
+#include "device/peripherals/LED/LED.h"
 
 static const size_t MAP_SIZE = 22;
 
