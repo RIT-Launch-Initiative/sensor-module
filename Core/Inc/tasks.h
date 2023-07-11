@@ -67,7 +67,7 @@ RetType ms5607_task(void *args) {
  * @return Scheduler Status
  */
 RetType bmp388_task(void *args) {
-    static BMP3XX *bmp3xx = (BMP3XX *) deviceMap.get("bmp388");
+    static auto *bmp3xx = (BMP3XX *) deviceMap.get("bmp388");
     static BMP3XX_DATA_STRUCT(bmp3xx_data);
 
     RESUME();
@@ -92,7 +92,7 @@ RetType bmp388_task(void *args) {
  * @return Scheduler Status
  */
 RetType lsm6dsl_task(void *args) {
-    static LSM6DSL *lsm6dsl = (LSM6DSL *) deviceMap.get("lsm6dsl");
+    static auto *lsm6dsl = (LSM6DSL *) deviceMap.get("lsm6dsl");
     static LSM6DSL_DATA_STRUCT(lsm6dsl_data);
 
     RESUME();
@@ -116,7 +116,7 @@ RetType lsm6dsl_task(void *args) {
  * @return Scheduler Status
  */
 RetType adxl375_task(void *args) {
-    static ADXL375 *adxl375 = (ADXL375 *) deviceMap.get("adxl375");
+    static auto *adxl375 = (ADXL375 *) deviceMap.get("adxl375");
     static ADXL375_DATA_STRUCT(adxl375_data);
 
     RESUME();
@@ -140,7 +140,7 @@ RetType adxl375_task(void *args) {
  * @return Scheduler Status
  */
 RetType lis3mdl_task(void *args) {
-    static LIS3MDL *lis3mdl = (LIS3MDL *) deviceMap.get("lis3mdl");
+    static auto *lis3mdl = (LIS3MDL *) deviceMap.get("lis3mdl");
     static LIS3MDL_DATA_STRUCT(lis3mdl_data);
 
     RESUME();
@@ -164,7 +164,7 @@ RetType lis3mdl_task(void *args) {
  * @return Scheduler Status
  */
 RetType tmp117_task(void *args) {
-    static TMP117 *tmp117 = (TMP117 *) deviceMap.get("tmp117");
+    static auto *tmp117 = (TMP117 *) deviceMap.get("tmp117");
     static TMP117_DATA_STRUCT(tmp117_data);
 
     RESUME();
@@ -188,7 +188,7 @@ RetType tmp117_task(void *args) {
  * @return Scheduler Status
  */
 RetType shtc3_task(void *args) {
-    static SHTC3 *shtc3 = (SHTC3 *) deviceMap.get("shtc3");
+    static auto *shtc3 = (SHTC3 *) deviceMap.get("shtc3");
     static SHTC3_DATA_STRUCT(shtc3_data);
 
     RESUME();
