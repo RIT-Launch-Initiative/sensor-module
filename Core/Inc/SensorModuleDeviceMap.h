@@ -7,14 +7,18 @@
 #define SENSOR_MODULE_SENSORMODULEDEVICEMAP_H
 
 #include "device/DeviceMap.h"
-#include "sched/macros/macros.h"
+#include "sched/macros.h"
 
+#include "device/GPIODevice.h"
 #include "device/StreamDevice.h"
+#include "device/I2CDevice.h"
+#include "device/SPIDevice.h"
+
 #include "device/peripherals/ADXL375/ADXL375.h"
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
 #include "device/peripherals/LSM6DSL/LSM6DSL.h"
-#include "device/peripherals/MS5607/MS5607.h"
+//#include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
 
@@ -26,7 +30,8 @@ public:
     SensorModuleDeviceMap(I2CDevice &i2cDevice, SPIDevice &wiznetSPI, SPIDevice &flashSPI,
                           GPIODevice &wiznetCS, GPIODevice &flashCS, GPIODevice &ledGPIO, StreamDevice &uart)
                           : alloc::DeviceMap<MAP_SIZE>("Sensor Module Device Map"),
-                            ms5607(i2cDevice), bmp3xx(i2cDevice), adxl375(i2cDevice),
+//                            ms5607(i2cDevice),
+                            bmp3xx(i2cDevice), adxl375(i2cDevice),
                             lsm6dsl(i2cDevice), lis3mdl(i2cDevice), shtc3(i2cDevice), tmp117(i2cDevice),
                             i2cDevice(i2cDevice),
                             wiznetSPI(wiznetSPI), wiznetCS(wiznetCS),
@@ -46,7 +51,7 @@ public:
 
         ret += add("debug_uart", &debugUART);
 
-        ret += add("ms5607", &ms5607);
+//        ret += add("ms5607", &ms5607);
         ret += add("bmp3xx", &bmp3xx);
         ret += add("adxl375", &adxl375);
         ret += add("lsm6dsl", &lsm6dsl);
@@ -60,7 +65,7 @@ public:
 
 private:
     // Sensors
-    MS5607 ms5607;
+//    MS5607 ms5607;
     BMP3XX bmp3xx;
     ADXL375 adxl375;
     LSM6DSL lsm6dsl;

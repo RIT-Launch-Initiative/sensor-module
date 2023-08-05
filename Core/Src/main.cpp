@@ -36,10 +36,10 @@
 #include "device/peripherals/BMP3XX/BMP3XX.h"
 #include "device/peripherals/LIS3MDL/LIS3MDL.h"
 #include "device/peripherals/LSM6DSL/LSM6DSL.h"
-#include "device/peripherals/MS5607/MS5607.h"
+//#include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
-#include "sched/macros/macros.h"
+#include "sched/macros.h"
 #include "device/DeviceMap.h"
 #include "init/init.h"
 
@@ -97,6 +97,7 @@ RetType ledTask(void *) {
 
     CALL(led->toggle());
 
+    RESET();
     return RET_SUCCESS;
 }
 
@@ -117,6 +118,7 @@ RetType bmpTask(void *) {
     size_t size = sprintf(buffer, "BMP Pressure: %f Pa \r\nBMP Temperature: %f C\r\n", pressure, temperature);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
+    RESET();
     return RET_SUCCESS;
 }
 
@@ -136,6 +138,7 @@ RetType tmpTask(void *) {
     size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
+    RESET();
     return RET_SUCCESS;
 }
 
@@ -162,6 +165,7 @@ RetType adxlTask(void *) {
 
     CALL(uartDev->write((uint8_t *) buffer, size));
 
+    RESET();
     return RET_SUCCESS;
 }
 
@@ -194,7 +198,7 @@ RetType lsmTask(void *) {
                            accX, accY, accZ, gyroX, gyroY, gyroZ);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-
+    RESET();
     return RET_SUCCESS;
 }
 
@@ -218,33 +222,33 @@ RetType lisTask(void *) {
                            temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-
+    RESET();
     return RET_SUCCESS;
 }
 
-RetType ms5607Task(void *) {
-    RESUME();
-    static auto *ms5607 = (MS5607 *) deviceMap->get("ms5607");
-    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
-
-    static float pressure = 0;
-    static float temperature = 0;
-
-    RetType ret = CALL(ms5607->getPressureTemp(&pressure, &temperature));
-    if (ret == RET_ERROR) {
-        CALL(uartDev->write((uint8_t *) "Failed to get MS5607 data\r\n", 27));
-    }
-
-    static float altitude = ms5607->getAltitude(pressure, temperature);
-
-    static char buffer[100];
-    size_t size = sprintf(buffer, "MS5607:\r\n\tPressure: %.2f mBar\r\n\tTemperature: %.2f C\r\n\tAltitude: %f\r\n",
-                          pressure, temperature, altitude);
-    CALL(uartDev->write((uint8_t *) buffer, size));
-
-
-    return RET_SUCCESS;
-}
+//RetType ms5607Task(void *) {
+//    RESUME();
+//    static auto *ms5607 = (MS5607 *) deviceMap->get("ms5607");
+//    static auto *uartDev = (StreamDevice *) deviceMap->get("uart");
+//
+//    static float pressure = 0;
+//    static float temperature = 0;
+//
+//    RetType ret = CALL(ms5607->getPressureTemp(&pressure, &temperature));
+//    if (ret == RET_ERROR) {
+//        CALL(uartDev->write((uint8_t *) "Failed to get MS5607 data\r\n", 27));
+//    }
+//
+//    static float altitude = ms5607->getAltitude(pressure, temperature);
+//
+//    static char buffer[100];
+//    size_t size = sprintf(buffer, "MS5607:\r\n\tPressure: %.2f mBar\r\n\tTemperature: %.2f C\r\n\tAltitude: %f\r\n",
+//                          pressure, temperature, altitude);
+//    CALL(uartDev->write((uint8_t *) buffer, size));
+//
+//    RESET();
+//    return RET_SUCCESS;
+//}
 
 RetType shtc3Task(void *) {
     RESUME();
@@ -263,7 +267,7 @@ RetType shtc3Task(void *) {
     size_t size = snprintf(buffer, 100, "Humidity: %f\r\nTemperature: %f\r\n", humidity, temp);
     CALL(uartDev->write((uint8_t *) buffer, size));
 
-
+    RESET();
     return RET_SUCCESS;
 }
 
@@ -275,7 +279,6 @@ RetType shtc3Task(void *) {
  */
 int main(void) {
     /* USER CODE BEGIN 1 */
-
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -301,7 +304,6 @@ int main(void) {
     MX_USART2_UART_Init();
     MX_SPI2_Init();
     /* USER CODE BEGIN 2 */
-
     if (!sched_init(&HAL_GetTick)) {
         HAL_UART_Transmit_IT(&huart2, (uint8_t *) "Failed to init scheduler\n\r", 30);
         return -1;
@@ -320,20 +322,26 @@ int main(void) {
     // TODO: Replace with actual GPIO when CS is put in
     SensorModuleDeviceMap map(i2c, wiznetSPI, flashSPI, ledGPIO, ledGPIO, ledGPIO, uart);
     deviceMap = &map;
+
     if (RET_SUCCESS != map.init()) {
+        swprintf("Failed to initialize Device Map!");
         HAL_UART_Transmit(&huart2, (uint8_t *) "Failed to init SensorModuleDeviceMap. Exiting.\r\n", 47, 1000);
         return -1;
+    } else {
+        swprintf("Initialized Device Map!");
     }
 
-    task_func_t tasks[12] = {ledTask, ms5607Task, bmpTask, adxlTask, lisTask, lsmTask, shtc3Task, tmpTask};
+    const int num_tasks = 7; // Increment for each task
+//    task_func_t tasks[12] = {ledTask, ms5607Task, bmpTask, adxlTask, lisTask, lsmTask, shtc3Task, tmpTask};
+    task_func_t tasks[num_tasks] = {ledTask, bmpTask, adxlTask, lisTask, lsmTask, shtc3Task, tmpTask};
 
     init_arg_t initArgs = {
         .dev_map = deviceMap,
         .tasks = tasks,
         .args = {},
-        .num_tasks = 8, // TODO: Increment for each new task
+        .num_tasks = num_tasks,
     };
-
+    map.print();
     sched_start(init, static_cast<void*>(&initArgs));
     /* USER CODE END 2 */
 
@@ -341,21 +349,7 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
 
     while (1) {
-        task_t *dispatch = sched_select();
-
-        if (nullptr != dispatch) {
-            HAL_UART_Transmit(&huart2, (const uint8_t *) "Dispatching\n\r", 13, 100);
-
-            sched_dispatched = dispatch->tid;
-            sched_jump[sched_dispatched].index = 0;
-
-            RetType ret = dispatch->func(dispatch->arg);
-
-            if (RET_ERROR == ret) {
-                HAL_UART_Transmit(&huart2, (const uint8_t *) "Dispatch failed\n\r", 17, 100);
-            }
-        }
-
+        sched_dispatch();
         HAL_Delay(50);
         /* USER CODE END WHILE */
         /* USER CODE BEGIN 3 */

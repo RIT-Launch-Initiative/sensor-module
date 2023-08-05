@@ -22,6 +22,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
+#ifdef DEBUG
+#include "device/platforms/stm32/swdebug.h"
+#endif
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -85,8 +88,10 @@ void NMI_Handler(void) {
   */
 _Noreturn void HardFault_Handler(void) {
     /* USER CODE BEGIN HardFault_IRQn 0 */
+#ifdef DEBUG
     HAL_UART_Transmit(&huart2, (uint8_t*)"HardFault\r\n", 11, 1000);
-
+    swprint("HardFault\n");
+#endif
     /* USER CODE END HardFault_IRQn 0 */
     while (1) {
         /* USER CODE BEGIN W1_HardFault_IRQn 0 */
