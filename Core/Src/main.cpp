@@ -312,14 +312,23 @@ int main(void) {
     HALUARTDevice uart("UART", &huart5);
     HALI2CDevice i2c("HAL I2C1", &hi2c3);
 
-    HALGPIODevice ledGPIO("LED GPIO", GPIOA, GPIO_PIN_5);
-    LED localLED(ledGPIO);
+    HALGPIODevice ledGPIOOne("LED GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
+    LED localLEDOne(ledGPIOOne);
+
+    HALGPIODevice ledGPIOTwo("LED GPIO", PA2_LED_GPIO_Port, PA2_LED_Pin);
+    LED localLEDTwo(ledGPIOTwo);
+
 
     HALSPIDevice wiznetSPI("Wiznet SPI", &hspi1);
+    HALGPIODevice wiznetCS("Wiznet CS", ETH_CS_GPIO_Port, ETH_CS_Pin);
+    HALGPIODevice wiznetLED("Wiznet LED", Wiz_LED_GPIO_Port, Wiz_LED_Pin);
+
+
     HALSPIDevice flashSPI("Flash SPI", &hspi2);
+    HALGPIODevice flashCS("Flash CS", WS25_CS_GPIO_Port, WS25_CS_Pin);
 
     // TODO: Replace with actual GPIO when CS is put in
-    SensorModuleDeviceMap map(i2c, wiznetSPI, flashSPI, ledGPIO, ledGPIO, ledGPIO, uart);
+    SensorModuleDeviceMap map(i2c, wiznetSPI, flashSPI, wiznetCS, flashCS, ledGPIOOne, ledGPIOTwo, wiznetLED, uart);
     deviceMap = &map;
 
     if (RET_SUCCESS != map.init()) {

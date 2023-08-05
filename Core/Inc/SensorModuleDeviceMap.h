@@ -21,6 +21,7 @@
 //#include "device/peripherals/MS5607/MS5607.h"
 #include "device/peripherals/SHTC3/SHTC3.h"
 #include "device/peripherals/TMP117/TMP117.h"
+#include "device/peripherals/LED/LED.h"
 
 static const size_t MAP_SIZE = 15;
 
@@ -28,15 +29,15 @@ class SensorModuleDeviceMap : public alloc::DeviceMap<MAP_SIZE> {
 public:
     /// @brief constructor
     SensorModuleDeviceMap(I2CDevice &i2cDevice, SPIDevice &wiznetSPI, SPIDevice &flashSPI,
-                          GPIODevice &wiznetCS, GPIODevice &flashCS, GPIODevice &ledGPIO, StreamDevice &uart)
+                          GPIODevice &wiznetCS, GPIODevice &flashCS, GPIODevice &ledOneGPIO,
+                          GPIODevice &ledTwoGPIO, GPIODevice &wiznetLEDGPIO, StreamDevice &uart)
                           : alloc::DeviceMap<MAP_SIZE>("Sensor Module Device Map"),
 //                            ms5607(i2cDevice),
                             bmp3xx(i2cDevice), adxl375(i2cDevice),
                             lsm6dsl(i2cDevice), lis3mdl(i2cDevice), shtc3(i2cDevice), tmp117(i2cDevice),
                             i2cDevice(i2cDevice),
-                            wiznetSPI(wiznetSPI), wiznetCS(wiznetCS),
-                            flashSPI(flashSPI), flashCS(flashCS),
-                            ledGPIO(ledGPIO), debugUART(uart) {};
+                            wiznetSPI(wiznetSPI), wiznetCS(wiznetCS), flashSPI(flashSPI), flashCS(flashCS),
+                            ledOneGPIO(ledOneGPIO), ledTwoGPIO(ledTwoGPIO), wiznetLEDGPIO(wiznetLEDGPIO), debugUART(uart) {};
 
     /// @brief initialize the Sensor Module specific map
     RetType init() {
@@ -47,7 +48,10 @@ public:
         ret += add("flash_spi", &flashSPI);
         ret += add("flash_cs", &flashCS);
 
-        ret += add("led", &ledGPIO);
+        ret += add("led_one", &ledOneGPIO);
+        ret += add("led_one", &ledTwoGPIO);
+        ret += add("led_one", &wiznetLEDGPIO);
+
 
         ret += add("debug_uart", &debugUART);
 
@@ -77,11 +81,13 @@ private:
 
     SPIDevice &wiznetSPI;
     GPIODevice &wiznetCS;
+    GPIODevice &wiznetLEDGPIO;
 
     SPIDevice &flashSPI;
     GPIODevice &flashCS;
 
-    GPIODevice &ledGPIO;
+    GPIODevice &ledOneGPIO;
+    GPIODevice &ledTwoGPIO;
 
     StreamDevice &debugUART;
 };
