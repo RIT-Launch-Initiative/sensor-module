@@ -327,7 +327,6 @@ int main(void) {
     HALSPIDevice flashSPI("Flash SPI", &hspi2);
     HALGPIODevice flashCS("Flash CS", WS25_CS_GPIO_Port, WS25_CS_Pin);
 
-    // TODO: Replace with actual GPIO when CS is put in
     SensorModuleDeviceMap map(i2c, wiznetSPI, flashSPI, wiznetCS, flashCS, ledGPIOOne, ledGPIOTwo, wiznetLED, uart);
     deviceMap = &map;
 
