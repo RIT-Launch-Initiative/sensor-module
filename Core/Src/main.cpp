@@ -49,7 +49,7 @@
 
 // #include "filesystem/ChainFS/ChainFS.h" // TODO: Unfinished
 /* USER CODE END Includes */
- 
+
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 typedef struct {
@@ -248,7 +248,7 @@ RetType tmpTask(void *) {
 //    addr.ip[3] = 10;
 //    addr.port = tmp_data.id;
 
-    RetType ret = CALL(tmp117->readTempCelsius(&tmp_data.temperature));
+    RetType ret = CALL(tmp117->getData(&tmp_data));
     if (ret == RET_ERROR) {
         // CALL(uartDev->write((uint8_t *) "Failed to get TMP data\r\n", 9));
         RESET();
@@ -257,7 +257,7 @@ RetType tmpTask(void *) {
 
 //    size_t size = sprintf(buffer, "TMP Temperature: %f C\r\n", data.temp);
     // CALL(uartDev->write((uint8_t *) buffer, size));
-//    swprintf("TMP117\n\tTemperature: %3.2f C\n", tmp_data.temperature);
+    swprintf("TMP117\n\tTemperature: %3.2f C\n", tmp_data.temperature);
 
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&tmp_data), sizeof(tmp_data), &addr));
 
@@ -275,21 +275,21 @@ RetType adxlTask(void *) {
 //    addr.ip[3] = 10;
 //    addr.port = adxl_data.id;
 
-    RetType ret = CALL(adxl375->readXYZ(&adxl_data.x_accel, &adxl_data.y_accel, &adxl_data.z_accel));
+    RetType ret = CALL(adxl375->getData(&adxl_data));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "Failed to get ADXL data\r\n", 24)
         RESET();
         return RET_SUCCESS;
     }
 
-//    static char buffer[100];
+    static char buffer[100];
 //    size_t size = snprintf(buffer, 100, "ADXL375: x: %d, y: %d, z: %d\r\n", x, y, z);
-
+//
     // Use below if you want to print the values in multiple lines
     // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
 
     // CALL(uartDev->write((uint8_t *) buffer, size));
-//    swprintf("ADXL375\n\tX-Axis: %3.2f m/s^2\n\tY-Axis: %3.2f m/s^2\n\tZ-Axis: %3.2f m/s^2\n", adxl_data.x_accel, adxl_data.y_accel, adxl_data.z_accel);
+    swprintf("ADXL375\n\tX-Axis: %d m/s^2\n\tY-Axis: %d m/s^2\n\tZ-Axis: %d m/s^2\n", adxl_data.x_accel, adxl_data.y_accel, adxl_data.z_accel);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&adxl_data), sizeof(adxl_data), &addr));
 
     RESET();
@@ -380,7 +380,7 @@ RetType ms5607Task(void *) {
 //    addr.ip[3] = 10;
 //    addr.port = ms5607_data.id;
 
-    RetType ret = CALL(ms5607->getPressureTemp(&ms5607_data.pressure, &ms5607_data.temperature));
+    RetType ret = CALL(ms5607->getData(&ms5607_data));
     if (ret == RET_ERROR) {
         // CALL(uartDev->write((uint8_t *) "Failed to get MS5607 data\r\n", 27));
         RESET();
@@ -393,8 +393,7 @@ RetType ms5607Task(void *) {
 //                          pressure, temperature, altitude);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-    swprintf("MS5607:\n\tPressure: %.2f mBar\n\tTemperature: %.2f C\n\tAltitude: %f\n", ms5607_data.pressure,
-             ms5607_data.temperature, ms5607->getAltitude(ms5607_data.pressure, ms5607_data.temperature));
+    swprintf("MS5607:\n\tPressure: %.2f mBar\n\tTemperature: %.2f C\n", ms5607_data.pressure, ms5607_data.temperature);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&ms5607_data), sizeof(ms5607_data), &addr));
 
 
@@ -428,6 +427,17 @@ RetType shtc3Task(void *) {
     shtc3_end:
     RESET();
     return RET_SUCCESS;
+}
+
+static void check_i2c_ids() {
+    for (uint8_t i = 0; i < 128; i++) {
+        if (HAL_OK == HAL_I2C_IsDeviceReady(&hi2c3, i << 1, 10, 100)) {
+            uint8_t msg[64];
+            swprintf("Found I2C device at 0x%02X\r\n", i);
+        }
+    }
+
+    HAL_Delay(1000);
 }
 
 static led_flash_t led1_flash = {.led = &ledOne, .on_time = 100, .period = 250};
@@ -670,6 +680,8 @@ int main(void) {
     MX_I2C3_Init();
     MX_UART5_Init();
     /* USER CODE BEGIN 2 */
+    check_i2c_ids();
+
     HALUARTDevice uart("UART", &huart5);
     RetType ret = uart.init();
 
