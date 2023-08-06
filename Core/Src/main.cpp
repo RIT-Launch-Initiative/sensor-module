@@ -53,10 +53,10 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 typedef struct {
-	LED** led;
-	bool on;
-	uint32_t on_time;
-	uint32_t period; // Do not make this smaller than on_time, there is no check for this
+    LED **led;
+    bool on;
+    uint32_t on_time;
+    uint32_t period; // Do not make this smaller than on_time, there is no check for this
 } led_flash_t;
 
 
@@ -96,6 +96,9 @@ static void MX_I2C3_Init(void);
 
 static void MX_UART5_Init(void);
 
+void clearI2CBusyFlag(I2C_HandleTypeDef *hi2c);
+
+
 /* USER CODE BEGIN PFP */
 static MS5607 *ms5607 = nullptr;
 static BMP3XX *bmp3XX = nullptr;
@@ -123,75 +126,75 @@ static HALSPIDevice *flashSPI = nullptr;
 /* USER CODE BEGIN 0 */
 // Don't do the variable arguments stuff to save time
 // I don't actually know how much time this saves
-void swprint(const char* msg) {
+void swprint(const char *msg) {
 #ifdef DEBUG
-	int len = strlen(msg);
-	for (int i = 0; i < len; i++) {
-		ITM_SendChar(msg[i]);
-	}
+    int len = strlen(msg);
+    for (int i = 0; i < len; i++) {
+        ITM_SendChar(msg[i]);
+    }
 #endif
 }
 
 // send stuff down serial wire out if DEBUG flag set
 // Do not send a message larger than 256 bytes
-int swprintf(const char* fmt, ...) {
+int swprintf(const char *fmt, ...) {
 #ifdef DEBUG
-	va_list ap;
-	va_start(ap, fmt);
-	char msg[256];
-	int status = vsnprintf(msg, 256, fmt, ap);
-	va_end(ap);
+    va_list ap;
+    va_start(ap, fmt);
+    char msg[256];
+    int status = vsnprintf(msg, 256, fmt, ap);
+    va_end(ap);
 
-	if (status > 0) {
-		for (int i = 0; i < status; i++) {
-			ITM_SendChar(msg[i]);
-		}
-	}
+    if (status > 0) {
+        for (int i = 0; i < status; i++) {
+            ITM_SendChar(msg[i]);
+        }
+    }
 
-	return status;
+    return status;
 #else
-	return 0;
+    return 0;
 #endif
 }
 
-RetType print_heartbeat_task(void*) {
-	RESUME();
-	static int i = 0;
-	swprintf("Ping %d\n", i++);
-	SLEEP(1000);
-	RESET();
-	return RET_SUCCESS;
+RetType print_heartbeat_task(void *) {
+    RESUME();
+    static int i = 0;
+    swprintf("Ping %d\n", i++);
+    SLEEP(1000);
+    RESET();
+    return RET_SUCCESS;
 }
 
-RetType flash_led_task(void* params) {
-	RESUME();
-	led_flash_t* arg = ((led_flash_t*) params);
-	LED* task_led = *(arg->led);
+RetType flash_led_task(void *params) {
+    RESUME();
+    led_flash_t *arg = ((led_flash_t *) params);
+    LED *task_led = *(arg->led);
 
-	if (NULL != task_led) {
-		if ((arg -> on) && (arg->period - arg->on_time > 0)) {
-			task_led->set_state(LED_OFF);
-			arg->on = false;
-			SLEEP(arg->period - arg->on_time);
-		} else if (arg->on_time > 0) {
-			task_led->set_state(LED_ON);
-			arg->on = true;
-			SLEEP(arg->on_time);
-		}
-	}
-	RESET();
-	return RET_SUCCESS;
+    if (NULL != task_led) {
+        if ((arg->on) && (arg->period - arg->on_time > 0)) {
+            task_led->set_state(LED_OFF);
+            arg->on = false;
+            SLEEP(arg->period - arg->on_time);
+        } else if (arg->on_time > 0) {
+            task_led->set_state(LED_ON);
+            arg->on = true;
+            SLEEP(arg->on_time);
+        }
+    }
+    RESET();
+    return RET_SUCCESS;
 }
 
-RetType init_led_task(void*) {
-	RESUME();
+RetType init_led_task(void *) {
+    RESUME();
 
-	CALL(ledOne->init());
-	CALL(ledTwo->init());
-	CALL(wizLED->init());
+    CALL(ledOne->init());
+    CALL(ledTwo->init());
+    CALL(wizLED->init());
 
-	RESET();
-	return RET_ERROR;
+    RESET();
+    return RET_ERROR;
 }
 
 
@@ -203,7 +206,7 @@ RetType i2cDevPollTask(void *) {
     return RET_SUCCESS;
 }
 
-    RetType spiDevPollTask(void *) {
+RetType spiDevPollTask(void *) {
     RESUME();
     CALL(wizSPI->poll());
 //    CALL(flashSPI->poll());
@@ -289,7 +292,8 @@ RetType adxlTask(void *) {
     // size_t size = snprintf(buffer, 100, "ADXL375:\r\n\tX-Axis: %d m/s^2\r\n\tY-Axis: %d m/s^2\r\n\tZ-Axis: %d m/s^2\r\n", x, y, z);
 
     // CALL(uartDev->write((uint8_t *) buffer, size));
-    swprintf("ADXL375\n\tX-Axis: %d m/s^2\n\tY-Axis: %d m/s^2\n\tZ-Axis: %d m/s^2\n", adxl_data.x_accel, adxl_data.y_accel, adxl_data.z_accel);
+    swprintf("ADXL375\n\tX-Axis: %d m/s^2\n\tY-Axis: %d m/s^2\n\tZ-Axis: %d m/s^2\n", adxl_data.x_accel,
+             adxl_data.y_accel, adxl_data.z_accel);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&adxl_data), sizeof(adxl_data), &addr));
 
     RESET();
@@ -414,7 +418,7 @@ RetType shtc3Task(void *) {
     RetType ret = CALL(shtc3->getHumidityAndTemp(&shtc3_data.temperature, &shtc3_data.humidity));
     if (RET_ERROR == ret) {
 //    	swprint("#RED#SHTC3: Data read fail\n");
-    	goto shtc3_end;
+        goto shtc3_end;
     }
 //    swprintf("SHTC3:\n\t T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
 
@@ -425,17 +429,18 @@ RetType shtc3Task(void *) {
 //    }
 
     shtc3_end:
-    RESET();
+RESET();
     return RET_SUCCESS;
 }
 
 static void check_i2c_ids() {
     for (uint8_t i = 0; i < 128; i++) {
         if (HAL_OK == HAL_I2C_IsDeviceReady(&hi2c3, i << 1, 10, 100)) {
-            uint8_t msg[64];
             swprintf("Found I2C device at 0x%02X\r\n", i);
         }
     }
+
+    swprint("Done checking I2C");
 
     HAL_Delay(1000);
 }
@@ -460,12 +465,12 @@ RetType sensorInitTask(void *) {
         tmpTID = sched_start(tmpTask, {});
 
         if (-1 == tmpTID) {
-			swprint("#RED#TMP117 task start failed\n");
+            swprint("#RED#TMP117 task start failed\n");
         } else {
-			swprint("#GRN#TMP117 task start OK\n");
+            swprint("#GRN#TMP117 task start OK\n");
         }
     } else {
-		swprint("#RED#TMP117 init failed\n");
+        swprint("#RED#TMP117 init failed\n");
     }
 
     swprint("Initializing LSM6DSL\n");
@@ -477,12 +482,12 @@ RetType sensorInitTask(void *) {
 //        lsmTID = sched_start(lsmTask, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == lsmTID) {
-			swprint("#RED#LSM6DSL task start failed\n");
+            swprint("#RED#LSM6DSL task start failed\n");
         } else {
-			swprint("#GRN#LSM6DSL task start OK\n");
+            swprint("#GRN#LSM6DSL task start OK\n");
         }
     } else {
-		swprint("#RED#LSM6DSL init failed\n");
+        swprint("#RED#LSM6DSL init failed\n");
     }
 
     swprint("Initializing MS5607\n");
@@ -494,12 +499,12 @@ RetType sensorInitTask(void *) {
         ms5TID = sched_start(ms5607Task, {}); // TODO: Doesn't print data?
 
         if (-1 == ms5TID) {
-			swprint("#RED#MS5607 task start failed\n");
+            swprint("#RED#MS5607 task start failed\n");
         } else {
-			swprint("#GRN#MS5607 task start OK\n");
+            swprint("#GRN#MS5607 task start OK\n");
         }
     } else {
-		swprint("#RED#MS5607 init failed\n");
+        swprint("#RED#MS5607 init failed\n");
     }
 
     swprint("Initializing ADXL375\n");
@@ -511,12 +516,12 @@ RetType sensorInitTask(void *) {
         adxl375TID = sched_start(adxlTask, {});
 
         if (-1 == adxl375TID) {
-			swprint("#RED#ADXL375 task start failed\n");
+            swprint("#RED#ADXL375 task start failed\n");
         } else {
-			swprint("#GRN#ADXL375 task start OK\n");
+            swprint("#GRN#ADXL375 task start OK\n");
         }
     } else {
-		swprint("#RED#ADXL375 init \n");
+        swprint("#RED#ADXL375 init \n");
     }
 
     swprint("Initializing LIS3MDL\n");
@@ -528,12 +533,12 @@ RetType sensorInitTask(void *) {
         lisTID = sched_start(lisTask, {});
 
         if (-1 == lisTID) {
-			swprint("#RED#LIS3MDL task start failed\n");
+            swprint("#RED#LIS3MDL task start failed\n");
         } else {
-			swprint("#GRN#LIS3MDL task start OK\n");
+            swprint("#GRN#LIS3MDL task start OK\n");
         }
     } else {
-		swprint("#RED#LIS3MDL init failed\n");
+        swprint("#RED#LIS3MDL init failed\n");
     }
 
     swprint("Initializing SHTC3\n");
@@ -545,12 +550,12 @@ RetType sensorInitTask(void *) {
 //        shtTID = sched_start(shtc3Task, {}); // TODO: Causes no other I2C tasks to run
 
         if (-1 == shtTID) {
-			swprint("#RED#SHTC3 task start failed\n");
+            swprint("#RED#SHTC3 task start failed\n");
         } else {
-			swprint("#GRN#SHTC3 task start OK\n");
+            swprint("#GRN#SHTC3 task start OK\n");
         }
     } else {
-		swprint("#RED#SHTC3 init failed\n");
+        swprint("#RED#SHTC3 init failed\n");
     }
 
     led1_flash.period = 1000;
@@ -654,7 +659,6 @@ RetType sensorInitTask(void *) {
   */
 int main(void) {
     /* USER CODE BEGIN 1 */
-
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -679,6 +683,7 @@ int main(void) {
     MX_SPI2_Init();
     MX_I2C3_Init();
     MX_UART5_Init();
+
     /* USER CODE BEGIN 2 */
     check_i2c_ids();
 
@@ -686,14 +691,14 @@ int main(void) {
     RetType ret = uart.init();
 
     if (ret != RET_SUCCESS) {
-    	swprint("Failed to init UART\n");
+        swprint("Failed to init UART\n");
         return -1;
     }
     uartDev = &uart;
     swprint("UART Initalized\n");
 
     if (!sched_init(&HAL_GetTick)) {
-    	swprint("Failed to init scheduler\n");
+        swprint("Failed to init scheduler\n");
         return -1;
     }
 
@@ -724,16 +729,16 @@ int main(void) {
     static HALI2CDevice i2c("HAL I2C3", &hi2c3);
     ret = i2c.init();
     if (RET_SUCCESS != ret) {
-    	swprint("Failed to init I2C3\n");
+        swprint("Failed to init I2C3\n");
         return -1;
     }
-	i2cDev = &i2c;
+    i2cDev = &i2c;
 
     static HALSPIDevice wizSpi("WIZNET SPI", &hspi1);
     ret = wizSpi.init();
     if (RET_SUCCESS != ret) {
-    	swprint("Failed to init SPI\n");
-    	return -1;
+        swprint("Failed to init SPI\n");
+        return -1;
     }
     wizSPI = &wizSpi;
 
@@ -1029,6 +1034,116 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+
+void clearI2CBusyFlag(I2C_HandleTypeDef *hi2c) {
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int timeout = 100;
+    int timeout_cnt = 0;
+
+    // Clear PE bit.
+    hi2c->Instance->CR1 &= ~(0x0001);
+    uint16_t I2C3_SCL_PIN = GPIO_PIN_8;
+    uint16_t I2C3_SDA_PIN = GPIO_PIN_9;
+    GPIO_TypeDef *I2C3_SCL_PORT = GPIOA;
+    GPIO_TypeDef *I2C3_SDA_PORT = GPIOC;
+
+    //  Configure the SCL and SDA I/Os as General Purpose Output Open-Drain, High level (Write 1 to GPIOx_ODR).
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+
+    GPIO_InitStruct.Pin = I2C3_SCL_PIN;
+    HAL_GPIO_Init(I2C3_SCL_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(I2C3_SCL_PORT, I2C3_SCL_PIN, GPIO_PIN_SET);
+
+    GPIO_InitStruct.Pin = I2C3_SDA_PIN;
+    HAL_GPIO_Init(I2C3_SDA_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(I2C3_SDA_PORT, I2C3_SDA_PIN, GPIO_PIN_SET);
+
+    // Check SCL and SDA High level in GPIOx_IDR.
+    while (GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C3_SCL_PORT, I2C3_SCL_PIN)) {
+        timeout_cnt++;
+        if (timeout_cnt > timeout) return;
+    }
+
+    while (GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C3_SDA_PORT, I2C3_SDA_PIN)) {
+        //Move clock to release I2C
+        HAL_GPIO_WritePin(I2C3_SCL_PORT, I2C3_SCL_PIN, GPIO_PIN_RESET);
+        asm("nop");
+        HAL_GPIO_WritePin(I2C3_SCL_PORT, I2C3_SCL_PIN, GPIO_PIN_SET);
+
+        timeout_cnt++;
+        if (timeout_cnt > timeout) return;
+    }
+
+    // Configure the SDA I/O as General Purpose Output Open-Drain, Low level (Write 0 to GPIOx_ODR).
+    HAL_GPIO_WritePin(I2C3_SDA_PORT, I2C3_SDA_PIN, GPIO_PIN_RESET);
+
+    // Check SDA Low level in GPIOx_IDR.
+    while (GPIO_PIN_RESET != HAL_GPIO_ReadPin(I2C3_SDA_PORT, I2C3_SDA_PIN)) {
+        timeout_cnt++;
+        if (timeout_cnt > timeout) return;
+    }
+
+    // Configure the SCL I/O as General Purpose Output Open-Drain, Low level (Write 0 to GPIOx_ODR).
+    HAL_GPIO_WritePin(I2C3_SCL_PORT, I2C3_SCL_PIN, GPIO_PIN_RESET);
+
+    // Check SCL Low level in GPIOx_IDR.
+    while (GPIO_PIN_RESET != HAL_GPIO_ReadPin(I2C3_SCL_PORT, I2C3_SCL_PIN)) {
+        timeout_cnt++;
+        if (timeout_cnt > timeout) return;
+    }
+
+    // Configure the SCL I/O as General Purpose Output Open-Drain, High level (Write 1 to GPIOx_ODR).
+    HAL_GPIO_WritePin(I2C3_SCL_PORT, I2C3_SCL_PIN, GPIO_PIN_SET);
+
+    // Check SCL High level in GPIOx_IDR.
+    while (GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C3_SCL_PORT, I2C3_SCL_PIN)) {
+        timeout_cnt++;
+        if (timeout_cnt > timeout) return;
+    }
+
+    // Configure the SDA I/O as General Purpose Output Open-Drain , High level (Write 1 to GPIOx_ODR).
+    HAL_GPIO_WritePin(I2C3_SDA_PORT, I2C3_SDA_PIN, GPIO_PIN_SET);
+
+    // Check SDA High level in GPIOx_IDR.
+    while (GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C3_SDA_PORT, I2C3_SDA_PIN)) {
+        timeout_cnt++;
+        if (timeout_cnt > timeout) return;
+    }
+
+    // Configure the SCL and SDA I/Os as Alternate function Open-Drain.
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
+
+    GPIO_InitStruct.Pin = I2C3_SCL_PIN;
+    HAL_GPIO_Init(I2C3_SCL_PORT, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = I2C3_SDA_PIN;
+    HAL_GPIO_Init(I2C3_SDA_PORT, &GPIO_InitStruct);
+
+    HAL_GPIO_WritePin(I2C3_SCL_PORT, I2C3_SCL_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(I2C3_SDA_PORT, I2C3_SDA_PIN, GPIO_PIN_SET);
+
+    // 13. Set SWRST bit in I2Cx_CR1 register.
+    hi2c->Instance->CR1 |= 0x8000;
+
+    asm("nop");
+
+    // Clear SWRST bit in I2Cx_CR1 register.
+    hi2c->Instance->CR1 &= ~0x8000;
+
+    asm("nop");
+
+    // Enable the I2C peripheral by setting the PE bit in I2Cx_CR1 register
+    hi2c->Instance->CR1 |= 0x0001;
+
+    // Call initialization function.
+    HAL_I2C_Init(hi2c);
+}
 
 /* USER CODE END 4 */
 
