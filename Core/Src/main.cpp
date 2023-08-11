@@ -232,7 +232,7 @@ RetType bmpTask(void *) {
         return RET_SUCCESS;
     }
 
-//    swprintf("BMP\n\tP: %3.2f Pa\n\tT: %3.2f C\n", bmp_data.pressure, bmp_data.temperature);
+    swprintf("BMP\n\tP: %3.2f Pa\n\tT: %3.2f C\n", bmp_data.pressure, bmp_data.temperature);
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&bmp_data), sizeof(bmp_data), &addr));
 
     RESET();
@@ -310,16 +310,9 @@ RetType lsmTask(void *) {
 //    addr.ip[3] = 10;
 //    addr.port = lsm_data.id;
 
-    RetType ret = CALL(lsm6dsl->getAccelAxesMS2(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
+    RetType ret = CALL(lsm6dsl->getData(&lsm_data));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Accel Axes\r\n", 34));
-        RESET();
-        return RET_SUCCESS;
-    }
-
-    ret = CALL(lsm6dsl->getGyroAxes(&lsm_data.x_gyro, &lsm_data.y_gyro, &lsm_data.z_gyro));
-    if (ret != RET_SUCCESS) {
-        // CALL(uartDev->write((uint8_t *) "LSM6DSL: Failed to get Gyro Axes\r\n", 34));
         RESET();
         return RET_SUCCESS;
     }
@@ -330,11 +323,10 @@ RetType lsmTask(void *) {
 //                           accX, accY, accZ, gyroX, gyroY, gyroZ);
     // CALL(uartDev->write((uint8_t *) buffer, size));
 
-//    swprintf("LSM6DSL\n\tAccel:\n\t\tX: %3.2f m/s^2\n\t\tY: %3.2f m/s^2\n\t\tZ: %3.2f m/s^2\n",
-//            lsm_data.x_accel, lsm_data.y_accel, lsm_data.z_accel);
-//    swprintf("\tGyro:\n\t\tX: %3.2f dps\n\t\tY: %3.2f dps\n\t\tZ: %3.2f dps\n",
-//            lsm_data.x_gyro, lsm_data.y_gyro, lsm_data.z_gyro);
-//    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&lsm_data), sizeof(lsm_data), &addr));
+    swprintf("LSM6DSL\n\tAccel:\n\t\tX: %ld m/s^2\n\t\tY: %ld m/s^2\n\t\tZ: %ld m/s^2\n",
+            lsm_data.x_accel, lsm_data.y_accel, lsm_data.z_accel);
+    swprintf("\tGyro:\n\t\tX: %ld dps\n\t\tY: %ld dps\n\t\tZ: %ld dps\n",
+            lsm_data.x_gyro, lsm_data.y_gyro, lsm_data.z_gyro);
 
     RESET();
     return RET_SUCCESS;
@@ -350,17 +342,14 @@ RetType lisTask(void *) {
 //    addr.ip[3] = 10;
 //    addr.port = lis_data.id;
 
-    RetType ret = CALL(
-            lis3mdl->pullSensorData(&lis_data.x_mag, &lis_data.y_mag, &lis_data.z_mag, &lis_data.temperature));
+    RetType ret = CALL(lis3mdl->getData(&lis_data));
     if (ret != RET_SUCCESS) {
         // CALL(uartDev->write((uint8_t *) "LIS3MDL: Failed to get sensor data\r\n", 35));
         RESET();
         return RET_SUCCESS;
     }
 
-//    swprintf("LIS3MDL\n\tX: %3.2f gauss\n\tY: %3.2f gauss\n\tZ: %3.2f gauss\n\tTemp: %3.2f C\n", lis_data.x_mag,
-//             lis_data.y_mag, lis_data.z_mag, lis_data.temperature);
-
+    swprintf("LIS3MDL\n\tX: %d gauss\n\tY: %d gauss\n\tZ: %d gauss\n\tTemp: %d C\n", lis_data.x_mag, lis_data.y_mag, lis_data.z_mag, lis_data.temperature);
 //    static char buffer[100];
 //    size_t size = snprintf(buffer, 100, "Mag: \r\n\tX: %f\r\n\tY: %f\r\n\tZ: %f\r\nTemp: %f\r\n", magX, magY, magZ,
 //                           temp);
@@ -420,7 +409,7 @@ RetType shtc3Task(void *) {
 //    	swprint("#RED#SHTC3: Data read fail\n");
         goto shtc3_end;
     }
-//    swprintf("SHTC3:\n\t T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
+    swprintf("SHTC3:\n\t T = %3.2f, RH = %3.2f\n", shtc3_data.temperature, shtc3_data.humidity);
 
 //    ret = CALL(sock->send(reinterpret_cast<uint8_t *>(&shtc3_data), sizeof(shtc3_data), &addr));
 //    if (RET_ERROR == ret) {
@@ -429,7 +418,7 @@ RetType shtc3Task(void *) {
 //    }
 
     shtc3_end:
-RESET();
+    RESET();
     return RET_SUCCESS;
 }
 
@@ -440,7 +429,7 @@ static void check_i2c_ids() {
         }
     }
 
-    swprint("Done checking I2C");
+    swprint("Done checking I2C\r\n");
 
     HAL_Delay(1000);
 }
@@ -452,111 +441,48 @@ static led_flash_t wiz_flash = {.led = &wizLED, .on_time = 100, .period = 250};
 RetType sensorInitTask(void *) {
     RESUME();
 
-//    tid_t flash1 = sched_start(flash_led_task, &led1_flash);
-//    tid_t flash2 = sched_start(flash_led_task, &led2_flash);
-//    tid_t hbeat = sched_start(print_heartbeat_task, {});
-
-    swprint("Initializing TMP117\n");
     static TMP117 tmp(*i2cDev);
     tmp117 = &tmp;
-    tid_t tmpTID = -1;
-    RetType tmp3Ret = CALL(tmp117->init());
-    if (tmp3Ret != RET_ERROR) {
-        tmpTID = sched_start(tmpTask, {});
 
-        if (-1 == tmpTID) {
-            swprint("#RED#TMP117 task start failed\n");
-        } else {
-            swprint("#GRN#TMP117 task start OK\n");
-        }
-    } else {
-        swprint("#RED#TMP117 init failed\n");
-    }
-
-    swprint("Initializing LSM6DSL\n");
-    static LSM6DSL lsm(*i2cDev, LSM6DSL_I2C_ADDR_SECONDARY);
+    static LSM6DSL lsm(*i2cDev, LSM6DSL::LSM6DSL_I2C_ADDR_SECONDARY);
     lsm6dsl = &lsm;
-    tid_t lsmTID = -1;
-    RetType lsm6dslRet = CALL(lsm6dsl->init());
-    if (lsm6dslRet != RET_ERROR) {
-//        lsmTID = sched_start(lsmTask, {}); // TODO: Causes no other I2C tasks to run
 
-        if (-1 == lsmTID) {
-            swprint("#RED#LSM6DSL task start failed\n");
-        } else {
-            swprint("#GRN#LSM6DSL task start OK\n");
-        }
-    } else {
-        swprint("#RED#LSM6DSL init failed\n");
-    }
-
-    swprint("Initializing MS5607\n");
     static MS5607 ms5(*i2cDev);
     ms5607 = &ms5;
-    tid_t ms5TID = -1;
-    RetType ms5Ret = CALL(ms5607->init());
-    if (ms5Ret != RET_ERROR) {
-        ms5TID = sched_start(ms5607Task, {}); // TODO: Doesn't print data?
 
-        if (-1 == ms5TID) {
-            swprint("#RED#MS5607 task start failed\n");
-        } else {
-            swprint("#GRN#MS5607 task start OK\n");
-        }
-    } else {
-        swprint("#RED#MS5607 init failed\n");
-    }
-
-    swprint("Initializing ADXL375\n");
-    static ADXL375 adxl(*i2cDev, 0x1D);
+    static ADXL375 adxl(*i2cDev);
     adxl375 = &adxl;
-    tid_t adxl375TID = -1;
-    RetType adxl375Ret = CALL(adxl375->init());
-    if (adxl375Ret != RET_ERROR) {
-        adxl375TID = sched_start(adxlTask, {});
 
-        if (-1 == adxl375TID) {
-            swprint("#RED#ADXL375 task start failed\n");
-        } else {
-            swprint("#GRN#ADXL375 task start OK\n");
-        }
-    } else {
-        swprint("#RED#ADXL375 init \n");
-    }
-
-    swprint("Initializing LIS3MDL\n");
-    static LIS3MDL lis(*i2cDev, LIS3MDL_I2C_ADDR_PRIMARY);
+    static LIS3MDL lis(*i2cDev);
     lis3mdl = &lis;
-    tid_t lisTID = -1;
-    RetType lis3mdlRet = CALL(lis3mdl->init());
-    if (lis3mdlRet != RET_ERROR) {
-        lisTID = sched_start(lisTask, {});
 
-        if (-1 == lisTID) {
-            swprint("#RED#LIS3MDL task start failed\n");
-        } else {
-            swprint("#GRN#LIS3MDL task start OK\n");
-        }
-    } else {
-        swprint("#RED#LIS3MDL init failed\n");
-    }
-
-    swprint("Initializing SHTC3\n");
-    static SHTC3 sht(*i2cDev, 0x70);
+    static SHTC3 sht(*i2cDev);
     shtc3 = &sht;
-    tid_t shtTID = -1;
-    RetType sht3mdlRet = CALL(shtc3->init());
-    if (sht3mdlRet != RET_ERROR) {
-//        shtTID = sched_start(shtc3Task, {}); // TODO: Causes no other I2C tasks to run
 
-        if (-1 == shtTID) {
-            swprint("#RED#SHTC3 task start failed\n");
-        } else {
-            swprint("#GRN#SHTC3 task start OK\n");
-        }
-    } else {
-        swprint("#RED#SHTC3 init failed\n");
-    }
+    static RetType tmp117Ret = CALL(tmp117->init());
+    static RetType lsm6dslRet = CALL(lsm6dsl->init());
+//    static RetType ms5607Ret = CALL(ms5607->init());
+    static RetType adxl375Ret = CALL(adxl375->init());
+    static RetType lis3mdlRet = CALL(lis3mdl->init());
+//    static RetType shtc3Ret = CALL(shtc3->init());
+
+    if (RET_SUCCESS != tmp117Ret) swprint("Failed to initialize TMP117\n");
+    else sched_start(tmpTask, {});
+
+    if (RET_SUCCESS != lsm6dslRet) swprint("Failed to initialize LSM6DSL\n");
+    else sched_start(lsmTask, {});
+
+//    if (RET_SUCCESS != ms5607Ret) swprint("Failed to initialize MS5607\n");
+//    else sched_start(ms5607Task, {});
+
+    if (RET_SUCCESS != adxl375Ret) swprint("Failed to initialize ADXL375\n");
+    else sched_start(adxlTask, {});
+
+    if (RET_SUCCESS != lis3mdlRet) swprint("Failed to initialize LIS3MDL\n");
+    else sched_start(lisTask, {});
+//
+//    if (RET_SUCCESS != shtc3Ret) swprint("Failed to initialize SHTC3\n");
+//    else sched_start(shtc3Task, {});
 
     led1_flash.period = 1000;
     led2_flash.period = 1000;
@@ -674,7 +600,7 @@ int main(void) {
     SystemClock_Config();
 
     /* USER CODE BEGIN SysInit */
-
+    clearI2CBusyFlag(&hi2c3);
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
@@ -685,7 +611,7 @@ int main(void) {
     MX_UART5_Init();
 
     /* USER CODE BEGIN 2 */
-    check_i2c_ids();
+    HAL_UART_Transmit(&huart5, reinterpret_cast<const uint8_t *>("Hello, World\r\n"), 14, 1000);
 
     HALUARTDevice uart("UART", &huart5);
     RetType ret = uart.init();
@@ -695,12 +621,11 @@ int main(void) {
         return -1;
     }
     uartDev = &uart;
-    swprint("UART Initalized\n");
-
     if (!sched_init(&HAL_GetTick)) {
         swprint("Failed to init scheduler\n");
         return -1;
     }
+    check_i2c_ids();
 
     // Initialize peripherals
     HALGPIODevice ledOneGPIO("LED 1 GPIO", PA1_LED_GPIO_Port, PA1_LED_Pin);
